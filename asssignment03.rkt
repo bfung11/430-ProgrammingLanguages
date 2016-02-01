@@ -8,6 +8,7 @@
 
 (define-type OWQQ2
   [num (n : number)]
+  [boolC (b : boolean)]
   [ifleq (condition : OWQQ2) 
          (if-true : OWQQ2) 
          (if-false : OWQQ2)]
@@ -76,6 +77,8 @@
 (define (parse [s : s-expression]) : OWQQ2
    (cond 
       [(s-exp-number? s) (num (s-exp->number s))]
+      [(s-exp-match? `true s) (boolC #t)]
+      [(s-exp-match? `false s) (boolC #f)]
       [(s-exp-match? '{ifleq0 ANY ANY ANY} s)
          (local [(define a-list (s-exp->list s))]
           (ifleq (parse (second a-list)) 
@@ -91,6 +94,8 @@
       [(s-exp-match? `SYMBOL s) (var (s-exp->symbol s))]))
 
 (test (parse '3) (num 3))
+(test (parse `true) (boolC #t))
+(test (parse `false) (boolC #f))
 (test (parse '{ifleq0 2 0 5}) (ifleq (num 2) (num 0) (num 5)))
 (test (parse '{ifleq0 x 0 5}) (ifleq (var 'x) (num 0) (num 5)))
 (test (parse '{+ 3 3}) (binop '+ (num 3) (num 3)))
@@ -174,7 +179,8 @@
     [var (id) (error 'interp "unbound identifier")]
     [app (fn args)
       (type-case FundefC (lookup fn funs)
-        [fundef (name params body) (interp body funs)])]))
+        [fundef (name params body) (interp body funs)])]
+    [else -1]))
 
 (test (interp (ifleq (num 2) (num 0) (num 5)) (list )) 5)
 (test (interp (ifleq (num 0) (num 8) (num 3)) (list )) 8)
