@@ -16,7 +16,7 @@
          (l : OWQQ3) 
          (r : OWQQ3)]
   [idC (id : symbol)]
-  [app (fn : symbol) 
+  [appC (fn : symbol) 
        (args : (listof OWQQ3))])
 
 (define-type FundefC
@@ -94,7 +94,7 @@
           (cond [(some? (hash-ref binop-table first-sym))
                  (binopC (s-exp->symbol (first a-list)) 
                   (parse (second a-list)) (parse (third a-list)))]
-                [else (app first-sym (map parse (rest a-list)))]))]))
+                [else (appC first-sym (map parse (rest a-list)))]))]))
 
 (test (parse '3) (numC 3))
 (test (parse `true) (boolC #t))
@@ -138,11 +138,11 @@
 (test (parse-prog '{{func {f x y} {+ x y}}
                     {func {main} {f 1 2}}})
       (list (fundef 'f (list 'x 'y) (binopC '+ (idC 'x) (idC 'y)))
-            (fundef 'main (list ) (app 'f (list (numC 1) (numC 2))))))
+            (fundef 'main (list ) (appC 'f (list (numC 1) (numC 2))))))
 (test (parse-prog '{{func {f} 5}
                     {func {main} {+ {f} {f}}}})
       (list (fundef 'f (list ) (numC 5))
-            (fundef 'main (list ) (binopC '+ (app 'f (list )) (app 'f (list ))))))
+            (fundef 'main (list ) (binopC '+ (appC 'f (list )) (appC 'f (list ))))))
 
 ; Look up the function in the list of functions in funs
 (define (lookup [a-name : symbol] [funs : (listof FundefC)]) : FundefC
@@ -153,23 +153,23 @@
 (test/exn (lookup 'x
                   (list (fundef 'f (list ) (numC 5))
                         (fundef 'main (list ) 
-                                (binopC '+ (app 'f (list )) (app 'f (list ))))))
+                                (binopC '+ (appC 'f (list )) (appC 'f (list ))))))
           "function list is empty")
 (test (lookup 'f
               (list (fundef 'f (list ) (numC 5))
                     (fundef 'main (list ) 
-                         (binopC '+ (app 'f (list )) (app 'f (list ))))))
+                         (binopC '+ (appC 'f (list )) (appC 'f (list ))))))
       (fundef 'f (list ) (numC 5)))
 (test (lookup 'main (list (fundef 'f (list ) (numC 5))
                           (fundef 'main (list ) 
-                                 (binopC '+ (app 'f (list )) (app 'f (list ))))))
-      (fundef 'main (list ) (binopC '+ (app 'f (list )) (app 'f (list )))))
+                                 (binopC '+ (appC 'f (list )) (appC 'f (list ))))))
+      (fundef 'main (list ) (binopC '+ (appC 'f (list )) (appC 'f (list )))))
 (test (lookup 'main (list (fundef 'add (list ) (binopC '+ (numC 2) (numC 3)))
-                        (fundef 'main (list ) (app 'f (list )))))
-      (fundef 'main (list ) (app 'f (list ))))
+                        (fundef 'main (list ) (appC 'f (list )))))
+      (fundef 'main (list ) (appC 'f (list ))))
 
 ; Interprets the given expression, using the list of funs to resolve 
-; applications.
+; appClications.
 ; taken from Assignment 2 by John Clements
 (define (interp [expr : OWQQ3] 
                 [funs : (listof FundefC)] 
@@ -182,7 +182,7 @@
     [binopC (s l r) ((some-v (hash-ref binop-table s)) 
                     (interp l funs env) (interp r funs env))]
     [idC (id) (error 'interp "unbound identifier")]
-    [app (fn args)
+    [appC (fn args)
       (type-case FundefC (lookup fn funs)
         [fundef (name params body) (interp body funs env)])]
     [else -1]))
@@ -194,7 +194,7 @@
 (test (interp (binopC '* (numC 3) (numC 3)) (list ) env) 9)
 (test (interp (binopC '/ (numC 3) (numC 3)) (list ) env) 1)
 (test/exn (interp (idC 'x) (list ) env) "unbound identifier")
-(test (interp (app 'f (list (numC 3) (numC 4))) 
+(test (interp (appC 'f (list (numC 3) (numC 4))) 
               (list (fundef 'f (list 'x 'y) (binopC '+ (numC 2) (numC 3)))) env)
       5)
 
@@ -208,15 +208,15 @@
 ; testcase - idCs but not used
 ; testcase - use idCs
 (test (interp-fns (list (fundef 'add (list ) (binopC '+ (numC 2) (numC 3)))
-                        (fundef 'main (list ) (app 'add (list )))))
+                        (fundef 'main (list ) (appC 'add (list )))))
       5)
 (test (interp-fns (list (fundef 'add (list 'x 'y) (binopC '+ (numC 2) (numC 3)))
-                        (fundef 'main (list ) (app 'add (list (numC 10) (numC 20))))))
+                        (fundef 'main (list ) (appC 'add (list (numC 10) (numC 20))))))
       5)
 
 ; wrong code - required to save submission
 ; (test (interp-fns (list (fundef 'f (list 'x 'y) (binop '+ (idC 'x) (idC 'y)))
-;                         (fundef 'main (list ) (app 'f (list (num 1) (num 2))))))
+;                         (fundef 'main (list ) (appC 'f (list (num 1) (num 2))))))
 ;       3)
 ; replaces all occurrences of a idC with a number
 ; (define (subst [s : s-expression]) : s-expression
