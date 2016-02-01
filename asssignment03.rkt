@@ -19,6 +19,8 @@
   [appC (fn : symbol) 
        (args : (listof OWQQ3))])
 
+(define-type-alias Environment (hashof symbol Value))
+
 (define-type FundefC
   [fundef (name : symbol) 
           (params : (listof symbol)) 
@@ -26,7 +28,10 @@
 
 (define-type Value
   [numV (num : number)]
-  [boolV (bool : boolean)])
+  [boolV (bool : boolean)]
+  [closureV (params : (listof symbol))
+            (body : OWQQ3)
+            (env : Environment)])
 
 (define binop-table
   (hash (list (values '+ +)
@@ -34,7 +39,6 @@
               (values '* *)
               (values '/ /))))
  
-(define-type-alias Environment (hashof symbol Value))
 
 (define env (hash (list)))
 
@@ -70,11 +74,14 @@
     [boolV (b) 
       (cond 
         [(equal? b #t) "true"]
-        [else "false"])]))
+        [else "false"])]
+    [closureV (p b e) "#<procedure>"]))
 
 (test (serialize (numV 4)) "4")
 (test (serialize (boolV true)) "true")
 (test (serialize (boolV false)) "false")
+(test (serialize (closureV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) env)) 
+                 "#<procedure>")
 
 ; Parses an expression.
 (define (parse [s : s-expression]) : OWQQ3
