@@ -23,20 +23,26 @@
           (params : (listof symbol)) 
           (body : OWQQ2)])
 
+(define-type Value
+  [numV (num : number)]
+  [boolV (bool : boolean)])
+
 (define binop-table
   (hash (list (values '+ +)
               (values '- -)
               (values '* *)
               (values '/ /))))
 
+
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 2 by John Clements
 ; (define (top-eval [fun-sexps : s-expression])  : number
 ;   (interp-fns (parse-prog fun-sexps)))
 
-; wrong code - required to save submission
-(define (top-eval [fun-sexps : s-expression])  : number
-  10)
+; (define (top-eval [s : s-expression]) : string
+;   (serialize (interp (parse s) empty-env)))
+(define (top-eval [s : s-expression]) : string
+  "implement me please :)")
 
 ; bad tests - required test case to save submission
 ; (test (top-eval '(+ 3 3)) 6)
@@ -53,6 +59,18 @@
 ;             (parse-prog '{{func {f x y} {+ x y}}
 ;                           {func {main} {f 1}}}))
 ;            "wrong arity")
+
+(define (serialize [value : Value]) : string
+  (type-case Value value
+    [numV (n) (to-string n)]
+    [boolV (b) 
+      (cond 
+        [(equal? b #t) "true"]
+        [else "false"])]))
+
+(test (serialize (numV 4)) "4")
+(test (serialize (boolV true)) "true")
+(test (serialize (boolV false)) "false")
 
 ; Parses an expression.
 (define (parse [s : s-expression]) : OWQQ2
