@@ -12,10 +12,13 @@
   [ifleq (condition : OWQQ3) 
          (if-true : OWQQ3) 
          (if-false : OWQQ3)]
+  [idC (id : symbol)]
+  [ifC (condition : OWQQ3) 
+       (if-true : OWQQ3) 
+       (else-statement : OWQQ3)]
   [binopC (op : symbol) 
          (l : OWQQ3) 
          (r : OWQQ3)]
-  [idC (id : symbol)]
   [appC (fn : symbol) 
        (args : (listof OWQQ3))])
 
@@ -90,6 +93,11 @@
       [(s-exp-match? `true s) (boolC #t)]
       [(s-exp-match? `false s) (boolC #f)]
       [(s-exp-match? `SYMBOL s) (idC (s-exp->symbol s))]
+      [(s-exp-match? `{if ANY ANY ANY} s) 
+        (local [(define a-list (s-exp->list s))]
+          (ifC (parse (second a-list)) 
+               (parse (third a-list)) 
+               (parse (fourth a-list))))]
       [(s-exp-match? '{ifleq0 ANY ANY ANY} s)
          (local [(define a-list (s-exp->list s))]
           (ifleq (parse (second a-list)) 
@@ -106,6 +114,8 @@
 (test (parse '3) (numC 3))
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
+(test (parse `x) (idC 'x))
+(test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
 (test (parse '{ifleq0 2 0 5}) (ifleq (numC 2) (numC 0) (numC 5)))
 (test (parse '{ifleq0 x 0 5}) (ifleq (idC 'x) (numC 0) (numC 5)))
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
@@ -113,7 +123,6 @@
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
 (test (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (test (parse '{/ x 3}) (binopC '/ (idC 'x) (numC 3)))
-(test (parse `x) (idC 'x))
 
 ; Parses a function definition by consuming an s-expression and produces a
 ; FundefC
