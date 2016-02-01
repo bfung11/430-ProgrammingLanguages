@@ -6,23 +6,23 @@
 
 (print-only-errors #t)
 
-(define-type OWQQ2
+(define-type OWQQ3
   [num (n : number)]
   [boolC (b : boolean)]
-  [ifleq (condition : OWQQ2) 
-         (if-true : OWQQ2) 
-         (if-false : OWQQ2)]
+  [ifleq (condition : OWQQ3) 
+         (if-true : OWQQ3) 
+         (if-false : OWQQ3)]
   [binop (op : symbol) 
-         (l : OWQQ2) 
-         (r : OWQQ2)]
+         (l : OWQQ3) 
+         (r : OWQQ3)]
   [var (id : symbol)]
   [app (fn : symbol) 
-       (args : (listof OWQQ2))])
+       (args : (listof OWQQ3))])
 
 (define-type FundefC
   [fundef (name : symbol) 
           (params : (listof symbol)) 
-          (body : OWQQ2)])
+          (body : OWQQ3)])
 
 (define-type Value
   [numV (num : number)]
@@ -74,7 +74,7 @@
 (test (serialize (boolV false)) "false")
 
 ; Parses an expression.
-(define (parse [s : s-expression]) : OWQQ2
+(define (parse [s : s-expression]) : OWQQ3
    (cond 
       [(s-exp-number? s) (num (s-exp->number s))]
       [(s-exp-match? `true s) (boolC #t)]
@@ -168,8 +168,8 @@
 ; Interprets the given expression, using the list of funs to resolve 
 ; applications.
 ; taken from Assignment 2 by John Clements
-(define (interp [expr : OWQQ2] [funs : (listof FundefC)]) : number
-  (type-case OWQQ2 expr
+(define (interp [expr : OWQQ3] [funs : (listof FundefC)]) : number
+  (type-case OWQQ3 expr
     [num (n) n]
     [ifleq (c t f) 
       (cond [(= (interp c funs) 0) (interp t funs)]
