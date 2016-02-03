@@ -74,11 +74,11 @@
           (ifC (parse (second a-list)) 
                (parse (third a-list)) 
                (parse (fourth a-list))))]
-      ; [(s-exp-match? `{func {ANY ANY ...} ANY} s)
-      ;   (local [(define a-list (s-exp->list s))
-      ;           (define params (second a-list))]
-      ;     (funcC (map parse params)
-      ;            (parse (second a-list))))]
+      [(s-exp-match? `{func {ANY ...} ANY} s)
+        (local [(define a-list (s-exp->list s))
+                (define params (second a-list))]
+          (cloC (parse `x)
+                (parse (second a-list))))]
       [(s-exp-match? '{SYMBOL ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-sym (s-exp->symbol (first a-list)))]
@@ -98,42 +98,7 @@
 (test (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (test (parse '{/ x 3}) (binopC '/ (idC 'x) (numC 3)))
 
-; Parses a function definition by consuming an s-expression and produces a
-; FundefC
-; taken from Assignment 2 by John Clements
-(define (parse-fundef [s : s-expression]) : FundefC
-  (cond [(s-exp-match? '{func {SYMBOL SYMBOL ...} ANY} s)
-          (local [(define fun-list (s-exp->list s))
-                  (define sym-list (s-exp->list (second fun-list)))
-                  (define fun-name (s-exp->symbol (first sym-list)))
-                  (define args (rest sym-list))
-                  (define body (third fun-list))]
-                    (fundef fun-name (map s-exp->symbol args) (parse body)))]))
-
-(test (parse-fundef '{func {none} {+ 4 5}}) 
-      (fundef 'none (list ) (binopC '+ (numC 4) (numC 5))))
-(test (parse-fundef '{func {pumpkin x} {+ 4 x}}) 
-      (fundef 'pumpkin (list 'x) (binopC '+ (numC 4) (idC 'x))))
-(test (parse-fundef '{func {lots x y} {+ 4 x}}) 
-      (fundef 'lots (list 'x 'y) (binopC '+ (numC 4) (idC 'x))))
-(test (parse-fundef (first (s-exp->list '{{func {f x y} {+ x y}}})))
-      (fundef 'f (list 'x 'y) (binopC '+ (idC 'x) (idC 'y))))
-
-; Parses a list of function definitions by consuming an s-expression and 
-; produces a list of FundefC
-(define (parse-prog [s : s-expression]) : (listof FundefC)
-  (local [(define all-funs (s-exp->list s))]
-    (map parse-fundef all-funs)))
-
-(test (parse-prog '{{func {f x y} {+ x y}}
-                    {func {main} {f 1 2}}})
-      (list (fundef 'f (list 'x 'y) (binopC '+ (idC 'x) (idC 'y)))
-            (fundef 'main (list ) (appC 'f (list (numC 1) (numC 2))))))
-(test (parse-prog '{{func {f} 5}
-                    {func {main} {+ {f} {f}}}})
-      (list (fundef 'f (list ) (numC 5))
-            (fundef 'main (list ) (binopC '+ (appC 'f (list )) (appC 'f (list ))))))
-
+; 
 (define (lookup [for : symbol] [env : Environment]) : number
   (cond 
     [(empty? env) (error 'lookup "unbound identifier")]
