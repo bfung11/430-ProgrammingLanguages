@@ -13,11 +13,11 @@
   [ifC (condition : OWQQ3) 
        (if-true : OWQQ3) 
        (else-statement : OWQQ3)]
-  [funcC (params : (listof symbol))
-         (body : OWQQ3)]
   [binopC (op : symbol) ; operator
           (l : OWQQ3) 
           (r : OWQQ3)]
+  [funcC (params : (listof symbol))
+         (body : OWQQ3)]
   [appC (fn : symbol) 
         (args : (listof OWQQ3))])
 
@@ -192,6 +192,7 @@
                    (type-case Value condition
                      [boolV (b) (if b then els)]
                      [else (error 'interp "expected boolean")]))] 
+    [funcC (fn args) (error 'interp "funcC not implemented")]
     [appC (fn args) (error 'interp "appC not implemented")]))
     ; [appC (fn args)
     ;   (type-case FundefC (lookup fn funs)
@@ -221,6 +222,10 @@
 (test/exn (interp (idC 'x) empty-env) "unbound identifier")
 ; (test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
 ;       (numV 5))
+(test/exn (interp (funcC (list 'x 'y) (numC 3)) empty-env)
+      "funcC not implemented")
+(test/exn (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
+      "appC not implemented")
 
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 2 by John Clements
