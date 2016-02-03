@@ -20,6 +20,7 @@
           (r : OWQQ3)]
   [appC (fn : symbol) 
         (args : (listof OWQQ3))])
+
 (define-type FundefC
   [fundef (name : symbol) 
           (params : (listof symbol)) 
@@ -44,32 +45,6 @@
 (define-type-alias Environment (listof Binding))
 (define empty-env empty)
 (define extend-env cons)
-
-; consumes an expression and parses and interprets it
-; taken from Assignment 2 by John Clements
-; (define (top-eval [fun-sexps : s-expression])  : number
-;   (interp-fns (parse-prog fun-sexps)))
-
-; (define (top-eval [s : s-expression]) : string
-;   (serialize (interp (parse s) empty-env)))
-(define (top-eval [s : s-expression]) : string
-  "implement me please :)")
-
-; bad tests - required test case to save submission
-; (test (top-eval '(+ 3 3)) 6)
-; example test cases
-; (test (interp-fns
-;        (parse-prog '{{func {f x y} {+ x y}}
-;                      {func {main} {f 1 2}}}))
-;       3)
-;  (test (interp-fns
-;         (parse-prog '{{func {f} 5}
-;                       {func {main} {+ {f} {f}}}}))
-;        10)
-;  (test/exn (interp-fns
-;             (parse-prog '{{func {f x y} {+ x y}}
-;                           {func {main} {f 1}}}))
-;            "wrong arity")
 
 (define (serialize [value : Value]) : string
   (type-case Value value
@@ -238,26 +213,21 @@
 ; (test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
 ;       (numV 5))
 
-; Interprets the function named main from the fundefs.
+; consumes an expression and parses and interprets it
 ; taken from Assignment 2 by John Clements
-; (define (interp-fns [funs : (listof FundefC)]) : number
-;     (type-case FundefC (lookup 'main funs)
-;       (fundef (name args body) (interp body funs empty-env))))
+; (define (top-eval [fun-sexps : s-expression])  : number
+;   (interp-fns (parse-prog fun-sexps)))
+(define (top-eval [s : s-expression]) : string
+  (serialize (interp (parse s) empty-env)))
 
-; ; testcase - no idCs
-; ; testcase - idCs but not used
-; ; testcase - use idCs
-; (test (interp-fns (list (fundef 'add (list ) (binopC '+ (numC 2) (numC 3)))
-;                         (fundef 'main (list ) (appC 'add (list )))))
-;       5)
-; (test (interp-fns (list (fundef 'add (list 'x 'y) (binopC '+ (numC 2) (numC 3)))
-;                         (fundef 'main (list ) (appC 'add (list (numC 10) (numC 20))))))
-;       5)
+(test (top-eval '(+ 12 4)) "16")
+(test (top-eval '(* 12 4)) "48")
+(test (top-eval '(- 12 4)) "8")
+(test (top-eval '(/ 12 4)) "3")
+(test (top-eval `true) "true")
+(test (top-eval `false) "false")
 
-; wrong code - required to save submission
-; (test (interp-fns (list (fundef 'f (list 'x 'y) (binop '+ (idC 'x) (idC 'y)))
-;                         (fundef 'main (list ) (appC 'f (list (num 1) (num 2))))))
-;       3)
-; replaces all occurrences of a idC with a number
-; (define (subst [s : s-expression]) : s-expression
-;   )
+
+
+
+
