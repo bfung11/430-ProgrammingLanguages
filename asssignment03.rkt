@@ -13,7 +13,7 @@
   [ifC (condition : OWQQ3) 
        (if-true : OWQQ3) 
        (else-statement : OWQQ3)]
-  [cloC (params : (listof symbol))
+  [lamC (params : (listof symbol))
         (body : OWQQ3)]
   [binopC (op : symbol) ; operator
           (l : OWQQ3) 
@@ -76,8 +76,8 @@
                (parse (fourth a-list))))]
       [(s-exp-match? `{func {ANY ...} ANY} s)
         (local [(define a-list (s-exp->list s))
-                (define params (second a-list))]
-          (cloC (parse `x)
+                (define params (map s-exp->symbol (s-exp->list (second a-list))))]
+          (lamC params
                 (parse (second a-list))))]
       [(s-exp-match? '{SYMBOL ANY ...} s)
          (local [(define a-list (s-exp->list s))
@@ -98,7 +98,8 @@
 (test (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (test (parse '{/ x 3}) (binopC '/ (idC 'x) (numC 3)))
 
-; 
+; consumes a symbol and an environment and returns the number associated with 
+; the symbol
 (define (lookup [for : symbol] [env : Environment]) : number
   (cond 
     [(empty? env) (error 'lookup "unbound identifier")]
@@ -115,22 +116,9 @@
               (list (bind 'x 3)
                     (bind 'y 4)))
       4)
-; (test (interp (binopC '+ (numC 10) (appC 'const5 (numC 10)))
-;               empty-env
-;               (list (fdC 'const5 '_ (numC 5))))
-;       15)
- 
-; (test (interp (binopC '+ (numC 10) (appC 'double (binopC '+ (numC 1) (numC 2))))
-;               empty-env
-;               (list (fdC 'double 'x (binopC '+ (idC 'x) (idC 'x)))))
-;       16)
- 
-; (test (interp (binopC '+ (numC 10) (appC 'quadruple (binopC '+ (numC 1) (numC 2))))
-;               empty-env
-;               (list (fdC 'quadruple 'x (appC 'double (appC 'double (idC 'x))))
-;                     (fdC 'double 'x (binopC '+ (idC 'x) (idC 'x)))))
-;       22)
 
+; consumes an operator a left and right value for a binopC and returns the
+; resulting value
 (define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
   (numV ((some-v (hash-ref binop-table op)) 
          (numV-num left)
@@ -157,7 +145,7 @@
                    (type-case Value condition
                      [boolV (b) (if b then els)]
                      [else (error 'interp "expected boolean")]))] 
-    [cloC (params body) (cloV params body env)]
+    [lamC (params body) (cloV params body env)]
     [appC (fn args) (error 'interp "appC not implemented")]))
     ; [appC (fn args)
     ;   (type-case FundefC (lookup fn funs)
@@ -186,7 +174,7 @@
           "expected boolean")
 (test/exn (interp (idC 'x) empty-env) "unbound identifier")
 ; question: is this test case correct
-(test (interp (cloC (list 'x 'y) (numC 3)) empty-env)
+(test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
       (cloV (list 'x 'y) (numC 3) (list)))
 (test/exn (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
       "appC not implemented")
