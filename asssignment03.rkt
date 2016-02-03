@@ -9,9 +9,6 @@
 (define-type OWQQ3
   [numC (n : number)]
   [boolC (b : boolean)]
-  [ifleq (condition : OWQQ3) 
-         (if-true : OWQQ3) 
-         (if-false : OWQQ3)]
   [idC (id : symbol)]
   [ifC (condition : OWQQ3) 
        (if-true : OWQQ3) 
@@ -23,7 +20,6 @@
           (r : OWQQ3)]
   [appC (fn : symbol) 
         (args : (listof OWQQ3))])
-
 (define-type FundefC
   [fundef (name : symbol) 
           (params : (listof symbol)) 
@@ -121,8 +117,6 @@
 (test (parse `false) (boolC #f))
 (test (parse `x) (idC 'x))
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
-(test (parse '{ifleq0 2 0 5}) (ifleq (numC 2) (numC 0) (numC 5)))
-(test (parse '{ifleq0 x 0 5}) (ifleq (idC 'x) (numC 0) (numC 5)))
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
 (test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
@@ -167,7 +161,7 @@
 
 (define (lookup [for : symbol] [env : Environment]) : number
   (cond 
-    [(empty? env) (error 'lookup "no symbol")]
+    [(empty? env) (error 'lookup "unbound identifier")]
     [else (cond
             [(symbol=? for (bind-name (first env)))
              (bind-val (first env))]
@@ -213,15 +207,17 @@
     [boolC (b) (boolV b)]
     [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
     [idC (id) (numV (lookup id env))]
+    [ifC (c t f) (local [(define condition (interp c env))
+                         (define then (interp t env))
+                         (define els (interp f env))]
+                   (cond 
+                     [(equal? condition then) then]
+                     [else els]))]
     ; [appC (fn args)
     ;   (type-case FundefC (lookup fn funs)
     ;     [fundef (name params body) (interp body funs env)])]
     [else (error 'interp "not here")]))
 
-(test (interp (ifleq (numC 2) (numC 0) (numC 5)) empty-env) 
-      (numV 5))
-(test (interp (ifleq (numC 0) (numC 8) (numC 3)) empty-env) 
-      (numV 8))
 (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
       (numV 6))
 (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
