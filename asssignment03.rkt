@@ -146,6 +146,10 @@
               (list (bind 'x 3)
                     (bind 'y 4)))
       3)
+(test (lookup 'y
+              (list (bind 'x 3)
+                    (bind 'y 4)))
+      4)
 ; (test (interp (binopC '+ (numC 10) (appC 'const5 (numC 10)))
 ;               empty-env
 ;               (list (fdC 'const5 '_ (numC 5))))
@@ -185,13 +189,13 @@
     [ifC (c t f) (local [(define condition (interp c env))
                          (define then (interp t env))
                          (define els (interp f env))]
-                   (cond 
-                     [(equal? condition then) then]
-                     [else els]))]
+                   (type-case Value condition
+                     [boolV (b) (if b then els)]
+                     [else (error 'interp "expected boolean")]))] 
+    [appC (fn args) (error 'interp "appC not implemented")]))
     ; [appC (fn args)
     ;   (type-case FundefC (lookup fn funs)
     ;     [fundef (name params body) (interp body funs env)])]
-    [else (error 'interp "not here")]))
 
 (test (interp (numC 3) empty-env) (numV 3))
 (test (interp (numC 8) empty-env) (numV 8))
@@ -209,6 +213,11 @@
               (list (bind 'x 3)
                     (bind 'y 4)))
       (numV 3))
+(test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
+(test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
+; question: is 3 a valid number
+(test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
+          "expected boolean")
 (test/exn (interp (idC 'x) empty-env) "unbound identifier")
 ; (test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
 ;       (numV 5))
