@@ -218,6 +218,10 @@
     ;     [fundef (name params body) (interp body funs env)])]
     [else (error 'interp "not here")]))
 
+(test (interp (numC 3) empty-env) (numV 3))
+(test (interp (numC 8) empty-env) (numV 8))
+(test (interp (boolC #t) empty-env) (boolV #t))
+(test (interp (boolC #f) empty-env) (boolV #f))
 (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
       (numV 6))
 (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
@@ -226,9 +230,13 @@
       (numV 9))
 (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
       (numV 1))
+(test (interp (idC 'x)
+              (list (bind 'x 3)
+                    (bind 'y 4)))
+      (numV 3))
 (test/exn (interp (idC 'x) empty-env) "unbound identifier")
-(test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
-      (numV 5))
+; (test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
+;       (numV 5))
 
 ; Interprets the function named main from the fundefs.
 ; taken from Assignment 2 by John Clements
