@@ -193,39 +193,46 @@
 ;                     (fdC 'double 'x (binopC '+ (idC 'x) (idC 'x)))))
 ;       22)
 
+(define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
+  (numV ((some-v (hash-ref binop-table op)) 
+         (numV-num left)
+         (numV-num right))))
+
+(test (binopC-to-NumV '+ (numV 4) (numV 4)) (numV 8))
+(test (binopC-to-NumV '* (numV 4) (numV 4)) (numV 16))
+(test (binopC-to-NumV '- (numV 4) (numV 4)) (numV 0))
+(test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
+
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
 ; taken from Assignment 2 by John Clements
 (define (interp [expr : OWQQ3] 
-                [env : Environment]) : number
+                [env : Environment]) : Value
   (type-case OWQQ3 expr
-    [numC (n) n]
-    [binopC (s l r) ((some-v (hash-ref binop-table s)) 
-                    (interp l env) (interp r env))]
-    [idC (id) (lookup id env)]
-    ; [idC (id) (type-case (optionof Value) (hash-ref env id)
-    ;           [some (v) v]
-    ;           [none () (error 'interp "unbound id")])]
+    [numC (n) (numV n)]
+    [boolC (b) (boolV b)]
+    [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
+    [idC (id) (numV (lookup id env))]
     ; [appC (fn args)
     ;   (type-case FundefC (lookup fn funs)
     ;     [fundef (name params body) (interp body funs env)])]
     [else (error 'interp "not here")]))
 
-; (test (interp (ifleq (numC 2) (numC 0) (numC 5)) empty-env) 
-;       (numV 5))
-; (test (interp (ifleq (numC 0) (numC 8) (numC 3)) empty-env) 
-;       (numV 8))
-; (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
-;       (numV 6))
-; (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
-;       (numV 0))
-; (test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
-;       (numV 9))
-; (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
-;       (numV 1))
-; (test/exn (interp (idC 'x) empty-env) "unbound identifier")
-; (test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
-;       (numV 5))
+(test (interp (ifleq (numC 2) (numC 0) (numC 5)) empty-env) 
+      (numV 5))
+(test (interp (ifleq (numC 0) (numC 8) (numC 3)) empty-env) 
+      (numV 8))
+(test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
+      (numV 6))
+(test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
+      (numV 0))
+(test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
+      (numV 9))
+(test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
+      (numV 1))
+(test/exn (interp (idC 'x) empty-env) "unbound identifier")
+(test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
+      (numV 5))
 
 ; Interprets the function named main from the fundefs.
 ; taken from Assignment 2 by John Clements
