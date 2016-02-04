@@ -102,6 +102,7 @@
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
 (test (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (test (parse '{/ x 3}) (binopC '/ (idC 'x) (numC 3)))
+(test (parse '{f 3 4}) (appC (idC 'f) (list (numC 3) (numC 4))))
 
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
