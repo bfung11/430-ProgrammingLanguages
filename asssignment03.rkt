@@ -40,7 +40,7 @@
               (values '/ /))))
 
 (define-type Binding
-  [bind (name : symbol) (val : number)])
+  [bind (name : symbol) (val : Value)])
  
 (define-type-alias Environment (listof Binding))
 (define empty-env empty)
@@ -74,6 +74,10 @@
           (ifC (parse (second a-list)) 
                (parse (third a-list)) 
                (parse (fourth a-list))))]
+;       [(s-exp-match? '{with {SYMBOL = ANY} ... ANY} s)
+;         (local [(define a-list (s-exp->list s))]
+;           (appC (parse ))
+; ]
       [(s-exp-match? '{func {SYMBOL ...} ANY} s)
         (local [(define a-list (s-exp->list s))
                 (define params 
@@ -106,7 +110,8 @@
 
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
-(define (lookup [for : symbol] [env : Environment]) : number
+; todo cite
+(define (lookup [for : symbol] [env : Environment]) : Value
   (cond 
     [(empty? env) (error 'lookup "unbound identifier")]
     [else (cond
@@ -115,13 +120,13 @@
             [else (lookup for (rest env))])]))
 
 (test (lookup 'x 
-              (list (bind 'x 3)
-                    (bind 'y 4)))
-      3)
-(test (lookup 'y
-              (list (bind 'x 3)
-                    (bind 'y 4)))
-      4)
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
+      (numV 3))
+(test (lookup 'y 
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
+      (numV 4))
 
 ; consumes an operator a left and right value for a binopC and returns the
 ; resulting value
@@ -135,27 +140,50 @@
 (test (binopC-to-NumV '- (numV 4) (numV 4)) (numV 0))
 (test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
 
+; interp before adding to env?
+
+(define (add-to-env [params : (listof symbol)] 
+                    [args : (listof Value)]
+                    [env : Environment]) : (listof Binding)
+  (cond 
+    [(and (empty? params) (empty? args)) empty]
+    [else (cons (bind (first params) (first args)) 
+                (add-to-env (rest params) (rest args) env))]))
+
+(test (add-to-env (list 'x 'y 'z)
+            (list (numV 3)
+                  (numV 5)
+                  (numV 7))
+            empty-env)
+      (list (bind 'x (numV 3))
+            (bind 'y (numV 5))
+            (bind 'z (numV 7))))
+
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
 ; taken from Assignment 2 by John Clements
 (define (interp [expr : OWQQ3] 
                 [env : Environment]) : Value
-  (type-case OWQQ3 expr
-    [numC (n) (numV n)]
-    [boolC (b) (boolV b)]
-    [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
-    [idC (id) (numV (lookup id env))]
-    [ifC (c t f) (local [(define condition (interp c env))
-                         (define then (interp t env))
-                         (define els (interp f env))]
-                   (type-case Value condition
-                     [boolV (b) (if b then els)]
-                     [else (error 'interp "expected boolean")]))] 
-    [lamC (params body) (cloV params body env)]
-    [appC (fn args) (error 'interp "appC not implemented")]))
-    ; [appC (fn args)
-    ;   (type-case FundefC (lookup fn funs)
-    ;     [fundef (name params body) (interp body funs env)])]
+    (type-case OWQQ3 expr
+      [numC (n) (numV n)]
+      [boolC (b) (boolV b)]
+      [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
+      [idC (id) (lookup id env)]
+      [ifC (c t f) (local [(define condition (interp c env))
+                           (define then (interp t env))
+                           (define els (interp f env))]
+                     (type-case Value condition
+                       [boolV (b) (if b then els)]
+                       [else (error 'interp "expected boolean")]))] 
+      [lamC (params body) (cloV params body env)]
+      [appC (fn args) 
+        (type-case Value (interp fn env)
+          [cloV (params body env)
+            (local [(define (interp-again expr) (interp expr env))
+                    (define arg-vals (list (numV 4) (numV 5)))
+                    (define new-env (add-to-env params arg-vals env))]
+              (numV 4))]
+          [else (error 'interp "expected functions")])]))
 
 (test (interp (numC 3) empty-env) (numV 3))
 (test (interp (numC 8) empty-env) (numV 8))
@@ -170,8 +198,8 @@
 (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
       (numV 1))
 (test (interp (idC 'x)
-              (list (bind 'x 3)
-                    (bind 'y 4)))
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
       (numV 3))
 (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
@@ -182,10 +210,6 @@
 ; question: is this test case correct
 (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
       (cloV (list 'x 'y) (numC 3) (list)))
-(test/exn (interp (appC (idC 'f) (list (numC 3) (numC 4))) empty-env)
-      "appC not implemented")
-; (test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
-;       (numV 5))
 
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 2 by John Clements
