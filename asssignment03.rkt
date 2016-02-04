@@ -134,6 +134,10 @@
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
 (test/exn (parse '{+ + +}) "not a valid symbol")
+; (parse '{+ if with})
+; (parse 'func (x x) 3')
+; expected exception on test expression: '(parse '(+ if with))
+; Saving submission with errors.
 
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
