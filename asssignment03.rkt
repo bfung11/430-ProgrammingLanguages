@@ -46,6 +46,8 @@
 (define empty-env empty)
 (define extend-env cons)
 
+; Consumes a value and produces a string
+; taken from Assignment 3 by John Clements
 (define (serialize [value : Value]) : string
   (type-case Value value
     [numV (n) (to-string n)]
@@ -63,6 +65,7 @@
 
 ; Parses an expression.
 ; expected vs. actual
+; taken from Assignment 3 by John Clements
 (define (parse [s : s-expression]) : OWQQ3
    (cond 
       [(s-exp-number? s) (numC (s-exp->number s))]
@@ -74,23 +77,31 @@
           (ifC (parse (second a-list)) 
                (parse (third a-list)) 
                (parse (fourth a-list))))]
-;       [(s-exp-match? '{with {SYMBOL = ANY} ... ANY} s)
-;         (local [(define a-list (s-exp->list s))]
-;           (appC (parse ))
-; ]
+      [(s-exp-match? '{with {SYMBOL = ANY} ... ANY} s)
+        (local [(define a-list (s-exp->list s))
+                ; take out with and body
+                (define bind-list (reverse (rest (reverse (rest a-list)))))
+                (define bind-as-list (map s-exp->list bind-list))
+                (define sym-list (map s-exp->symbol (map first bind-as-list)))
+                (define fun-list (map third bind-as-list))
+                (define body (first (reverse (rest a-list))))]
+          (appC (lamC sym-list (parse body))
+                (map parse fun-list)))]
       [(s-exp-match? '{func {SYMBOL ...} ANY} s)
         (local [(define a-list (s-exp->list s))
                 (define params 
-                          (map s-exp->symbol (s-exp->list (second a-list))))]
+                        (map s-exp->symbol (s-exp->list (second a-list))))]
           (lamC params (parse (third a-list))))]
       [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
-                 (define first-sym (s-exp->symbol (first a-list)))]
-          (cond [(some? (hash-ref binop-table first-sym))
-                 (binopC first-sym 
-                         (parse (second a-list)) 
-                         (parse (third a-list)))]
-                [else (appC (parse (first a-list)) (map parse (rest a-list)))]))]))
+                 (define first-elem (first a-list))]
+          (cond [(and (s-exp-symbol? first-elem) 
+                      (some? (hash-ref binop-table (s-exp->symbol first-elem))))
+                        (binopC (s-exp->symbol first-elem)
+                                (parse (second a-list)) 
+                                (parse (third a-list)))]
+                [else (appC (parse first-elem)
+                            (map parse (rest a-list)))]))]))
 
 (test (parse '3) (numC 3))
 (test (parse `true) (boolC #t))
@@ -101,16 +112,28 @@
       (lamC empty (binopC '+ (numC 1) (numC 2))))
 (test (parse '{func {x y} {+ x y}}) 
       (lamC (list 'x 'y) (binopC '+ (idC 'x) (idC 'y))))
+(test (parse '{func {z y} {+ z y}})
+      (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y))))
+(test (parse '{{func {z y} {+ z y}} {+ 9 14} 98})
+      (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+            (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
 (test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
 (test (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (test (parse '{/ x 3}) (binopC '/ (idC 'x) (numC 3)))
 (test (parse '{f 3 4}) (appC (idC 'f) (list (numC 3) (numC 4))))
+(test (parse '{with {z = {+ 9 14}}
+                    {y = 98}
+                    {+ z y}})
+      (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+            (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
-; todo cite
+; taken from 
+; Programming Languages: Application and Interpretation, 
+; by Shriram Krishnamurthi, second edition.
 (define (lookup [for : symbol] [env : Environment]) : Value
   (cond 
     [(empty? env) (error 'lookup "unbound identifier")]
@@ -141,7 +164,9 @@
 (test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
 
 ; interp before adding to env?
-
+; function meant to add bindings to environment
+; consumes a list of symbols, a list of Values and an environment and produces
+; a list of Bindings
 (define (add-to-env [params : (listof symbol)] 
                     [args : (listof Value)]
                     [env : Environment]) : (listof Binding)
@@ -161,7 +186,7 @@
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
-; taken from Assignment 2 by John Clements
+; taken from Assignment 3 by John Clements
 (define (interp [expr : OWQQ3] 
                 [env : Environment]) : Value
     (type-case OWQQ3 expr
@@ -203,18 +228,14 @@
       (numV 3))
 (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
-; question: is 3 a valid number
 (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
           "expected boolean")
 (test/exn (interp (idC 'x) empty-env) "unbound identifier")
-; question: is this test case correct
 (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
       (cloV (list 'x 'y) (numC 3) (list)))
 
 ; consumes an expression and parses and interprets it
-; taken from Assignment 2 by John Clements
-; (define (top-eval [fun-sexps : s-expression])  : number
-;   (interp-fns (parse-prog fun-sexps)))
+; taken from Assignment 3 by John Clements
 (define (top-eval [s : s-expression]) : string
   (serialize (interp (parse s) empty-env)))
 
