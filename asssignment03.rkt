@@ -251,12 +251,20 @@
 (define (top-eval [s : s-expression]) : string
   (serialize (interp (parse s) empty-env)))
 
-(test (top-eval '(+ 12 4)) "16")
-(test (top-eval '(* 12 4)) "48")
-(test (top-eval '(- 12 4)) "8")
-(test (top-eval '(/ 12 4)) "3")
+; taken from Assignment 3 by John Clements
+(test (top-eval '{+ 12 4}) "16")
+(test (top-eval '{* 12 4}) "48")
+(test (top-eval '{- 12 4}) "8")
+(test (top-eval '{/ 12 4}) "3")
 (test (top-eval `true) "true")
 (test (top-eval `false) "false")
+(test (top-eval '{if true 3 4}) "3")
+(test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
+(test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
+(test (top-eval '{with {z = {+ 9 14}}
+                       {y = 98}
+                       {+ z y}})
+      "121")
 
 
 
