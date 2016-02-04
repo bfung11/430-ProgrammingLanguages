@@ -18,7 +18,7 @@
   [binopC (op : symbol) ; operator
           (l : OWQQ3) 
           (r : OWQQ3)]
-  [appC (fn : symbol) 
+  [appC (fn : OWQQ3) 
         (args : (listof OWQQ3))])
 
 (define-type FundefC
@@ -74,24 +74,29 @@
           (ifC (parse (second a-list)) 
                (parse (third a-list)) 
                (parse (fourth a-list))))]
-      [(s-exp-match? `{func {ANY ...} ANY} s)
+      [(s-exp-match? '{func {SYMBOL ...} ANY} s)
         (local [(define a-list (s-exp->list s))
-                (define params (map s-exp->symbol (s-exp->list (second a-list))))]
-          (lamC params
-                (parse (second a-list))))]
-      [(s-exp-match? '{SYMBOL ANY ...} s)
+                (define params 
+                          (map s-exp->symbol (s-exp->list (second a-list))))]
+          (lamC params (parse (third a-list))))]
+      [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-sym (s-exp->symbol (first a-list)))]
           (cond [(some? (hash-ref binop-table first-sym))
-                 (binopC (s-exp->symbol (first a-list)) 
-                  (parse (second a-list)) (parse (third a-list)))]
-                [else (appC first-sym (map parse (rest a-list)))]))]))
+                 (binopC first-sym 
+                         (parse (second a-list)) 
+                         (parse (third a-list)))]
+                [else (appC (parse (first a-list)) (map parse (rest a-list)))]))]))
 
 (test (parse '3) (numC 3))
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
 (test (parse `x) (idC 'x))
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
+(test (parse '{func {} {+ 1 2}}) 
+      (lamC empty (binopC '+ (numC 1) (numC 2))))
+(test (parse '{func {x y} {+ x y}}) 
+      (lamC (list 'x 'y) (binopC '+ (idC 'x) (idC 'y))))
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
 (test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
@@ -176,7 +181,7 @@
 ; question: is this test case correct
 (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
       (cloV (list 'x 'y) (numC 3) (list)))
-(test/exn (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
+(test/exn (interp (appC (idC 'f) (list (numC 3) (numC 4))) empty-env)
       "appC not implemented")
 ; (test (interp (appC 'f (list (numC 3) (numC 4))) empty-env)
 ;       (numV 5))
