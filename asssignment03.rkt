@@ -71,7 +71,10 @@
       [(s-exp-number? s) (numC (s-exp->number s))]
       [(s-exp-match? `true s) (boolC #t)]
       [(s-exp-match? `false s) (boolC #f)]
-      [(s-exp-match? `SYMBOL s) (idC (s-exp->symbol s))]
+      [(s-exp-match? `SYMBOL s) 
+        (cond [(some? (hash-ref binop-table (s-exp->symbol s))) 
+               (error 'parse "not a valid symbol")]
+              [else (idC (s-exp->symbol s))])]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
@@ -129,6 +132,8 @@
                     {+ z y}})
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
+
+(test/exn (parse '{+ + +}) "not a valid symbol")
 
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
