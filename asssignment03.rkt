@@ -208,7 +208,7 @@
                     (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
               (interp body new-env))]
-          [else (error 'interp "no body to functions")])]))
+          [else (error 'interp "expected function")])]))
 
 (test (interp (numC 3) empty-env) (numV 3))
 (test (interp (numC 8) empty-env) (numV 8))
@@ -238,7 +238,7 @@
               empty-env)
       (numV 121))
 (test/exn (interp (appC (numC 3) empty) empty-env)
-          "no body to functions")
+          "expected function")
 
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 3 by John Clements
