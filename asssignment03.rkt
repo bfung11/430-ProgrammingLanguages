@@ -205,10 +205,10 @@
         (type-case Value (interp fn env)
           [cloV (params body env)
             (local [(define (interp-again expr) (interp expr env))
-                    (define arg-vals (list (numV 4) (numV 5)))
+                    (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
-              (numV 4))]
-          [else (error 'interp "expected functions")])]))
+              (interp body new-env))]
+          [else (error 'interp "no body to functions")])]))
 
 (test (interp (numC 3) empty-env) (numV 3))
 (test (interp (numC 8) empty-env) (numV 8))
@@ -233,6 +233,12 @@
 (test/exn (interp (idC 'x) empty-env) "unbound identifier")
 (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
       (cloV (list 'x 'y) (numC 3) (list)))
+(test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+                    (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
+              empty-env)
+      (numV 121))
+(test/exn (interp (appC (numC 3) empty) empty-env)
+          "no body to functions")
 
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 3 by John Clements
