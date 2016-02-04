@@ -134,6 +134,7 @@
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
 (test/exn (parse '{+ + +}) "not a valid symbol")
+; (parse '{func {x x} 3}) (lamC ('x 'x))
 ; (parse '{+ if with})
 ; (parse 'func (x x) 3')
 ; expected exception on test expression: '(parse '(+ if with))
