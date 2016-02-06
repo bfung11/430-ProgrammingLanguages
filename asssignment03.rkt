@@ -7,17 +7,19 @@
 (print-only-errors #t)
 
 (define-type OWQQ3
-  [num (n : number)]
+  [numC (n : number)]
   [boolC (b : boolean)]
-  [ifleq (condition : OWQQ3) 
-         (if-true : OWQQ3) 
-         (if-false : OWQQ3)]
-  [binop (op : symbol) 
-         (l : OWQQ3) 
-         (r : OWQQ3)]
-  [var (id : symbol)]
-  [app (fn : symbol) 
-       (args : (listof OWQQ3))])
+  [idC (id : symbol)]
+  [ifC (condition : OWQQ3) 
+       (if-true : OWQQ3) 
+       (else-statement : OWQQ3)]
+  [lamC (params : (listof symbol))
+        (body : OWQQ3)]
+  [binopC (op : symbol) ; operator
+          (l : OWQQ3) 
+          (r : OWQQ3)]
+  [appC (fn : OWQQ3) 
+        (args : (listof OWQQ3))])
 
 (define-type FundefC
   [fundef (name : symbol) 
@@ -26,7 +28,10 @@
 
 (define-type Value
   [numV (num : number)]
-  [boolV (bool : boolean)])
+  [boolV (bool : boolean)]
+  [cloV (params : (listof symbol))
+        (body : OWQQ3)
+        (env : Environment)])
 
 (define binop-table
   (hash (list (values '+ +)
@@ -34,185 +39,239 @@
               (values '* *)
               (values '/ /))))
 
+(define-type Binding
+  [bind (name : symbol) (val : Value)])
+ 
+(define-type-alias Environment (listof Binding))
+(define empty-env empty)
+(define extend-env cons)
 
-; consumes an expression and parses and interprets it
-; taken from Assignment 2 by John Clements
-; (define (top-eval [fun-sexps : s-expression])  : number
-;   (interp-fns (parse-prog fun-sexps)))
-
-; (define (top-eval [s : s-expression]) : string
-;   (serialize (interp (parse s) empty-env)))
-(define (top-eval [s : s-expression]) : string
-  "implement me please :)")
-
-; bad tests - required test case to save submission
-; (test (top-eval '(+ 3 3)) 6)
-; example test cases
-; (test (interp-fns
-;        (parse-prog '{{func {f x y} {+ x y}}
-;                      {func {main} {f 1 2}}}))
-;       3)
-;  (test (interp-fns
-;         (parse-prog '{{func {f} 5}
-;                       {func {main} {+ {f} {f}}}}))
-;        10)
-;  (test/exn (interp-fns
-;             (parse-prog '{{func {f x y} {+ x y}}
-;                           {func {main} {f 1}}}))
-;            "wrong arity")
-
+; Consumes a value and produces a string
+; taken from Assignment 3 by John Clements
 (define (serialize [value : Value]) : string
   (type-case Value value
     [numV (n) (to-string n)]
     [boolV (b) 
       (cond 
         [(equal? b #t) "true"]
-        [else "false"])]))
+        [else "false"])]
+    [cloV (p b e) "#<procedure>"]))
 
 (test (serialize (numV 4)) "4")
 (test (serialize (boolV true)) "true")
 (test (serialize (boolV false)) "false")
+(test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
+                 "#<procedure>")
 
 ; Parses an expression.
+; expected vs. actual
+; taken from Assignment 3 by John Clements
 (define (parse [s : s-expression]) : OWQQ3
    (cond 
-      [(s-exp-number? s) (num (s-exp->number s))]
+      [(s-exp-number? s) (numC (s-exp->number s))]
       [(s-exp-match? `true s) (boolC #t)]
       [(s-exp-match? `false s) (boolC #f)]
-      [(s-exp-match? '{ifleq0 ANY ANY ANY} s)
-         (local [(define a-list (s-exp->list s))]
-          (ifleq (parse (second a-list)) 
-                 (parse (third a-list)) 
-                 (parse (fourth a-list))))]
-      [(s-exp-match? '{SYMBOL ANY ...} s)
+      [(s-exp-match? `SYMBOL s) 
+        (cond [(some? (hash-ref binop-table (s-exp->symbol s))) 
+               (error 'parse "not a valid symbol")]
+              [else (idC (s-exp->symbol s))])]
+      [(s-exp-match? `{if ANY ANY ANY} s) 
+        (local [(define a-list (s-exp->list s))]
+          (ifC (parse (second a-list)) 
+               (parse (third a-list)) 
+               (parse (fourth a-list))))]
+      [(s-exp-match? '{with {SYMBOL = ANY} ... ANY} s)
+        (local [(define a-list (s-exp->list s))
+                ; take out with and body
+                (define bind-list (reverse (rest (reverse (rest a-list)))))
+                (define bind-as-list (map s-exp->list bind-list))
+                (define sym-list (map s-exp->symbol (map first bind-as-list)))
+                (define fun-list (map third bind-as-list))
+                (define body (first (reverse (rest a-list))))]
+          (appC (lamC sym-list (parse body))
+                (map parse fun-list)))]
+      [(s-exp-match? '{func {SYMBOL ...} ANY} s)
+        (local [(define a-list (s-exp->list s))
+                (define params 
+                        (map s-exp->symbol (s-exp->list (second a-list))))]
+          (lamC params (parse (third a-list))))]
+      [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
-                 (define first-sym (s-exp->symbol (first a-list)))]
-          (cond [(some? (hash-ref binop-table first-sym))
-                 (binop (s-exp->symbol (first a-list)) 
-                  (parse (second a-list)) (parse (third a-list)))]
-                [else (app first-sym (map parse (rest a-list)))]))]
-      [(s-exp-match? `SYMBOL s) (var (s-exp->symbol s))]))
+                 (define first-elem (first a-list))]
+          (cond [(and (s-exp-symbol? first-elem) 
+                      (some? (hash-ref binop-table (s-exp->symbol first-elem))))
+                        (binopC (s-exp->symbol first-elem)
+                                (parse (second a-list)) 
+                                (parse (third a-list)))]
+                [else (appC (parse first-elem)
+                            (map parse (rest a-list)))]))]))
 
-(test (parse '3) (num 3))
+; taken from Assignment 3 by John Clements
+(test (parse '3) (numC 3))
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
-(test (parse '{ifleq0 2 0 5}) (ifleq (num 2) (num 0) (num 5)))
-(test (parse '{ifleq0 x 0 5}) (ifleq (var 'x) (num 0) (num 5)))
-(test (parse '{+ 3 3}) (binop '+ (num 3) (num 3)))
-(test (parse '{- 3 3}) (binop '- (num 3) (num 3)))
-(test (parse '{* 3 3}) (binop '* (num 3) (num 3)))
-(test (parse '{/ 3 3}) (binop '/ (num 3) (num 3)))
-(test (parse '{/ x 3}) (binop '/ (var 'x) (num 3)))
-(test (parse `x) (var 'x))
+(test (parse `x) (idC 'x))
+(test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
+(test (parse '{func {} {+ 1 2}}) 
+      (lamC empty (binopC '+ (numC 1) (numC 2))))
+(test (parse '{func {x y} {+ x y}}) 
+      (lamC (list 'x 'y) (binopC '+ (idC 'x) (idC 'y))))
+(test (parse '{func {z y} {+ z y}})
+      (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y))))
+(test (parse '{{func {z y} {+ z y}} {+ 9 14} 98})
+      (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+            (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
+(test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
+(test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
+(test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
+(test (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
+(test (parse '{/ x 3}) (binopC '/ (idC 'x) (numC 3)))
+(test (parse '{f 3 4}) (appC (idC 'f) (list (numC 3) (numC 4))))
+(test (parse '{with {z = {+ 9 14}}
+                    {y = 98}
+                    {+ z y}})
+      (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+            (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
-; Parses a function definition by consuming an s-expression and produces a
-; FundefC
-; taken from Assignment 2 by John Clements
-(define (parse-fundef [s : s-expression]) : FundefC
-  (cond [(s-exp-match? '{func {SYMBOL SYMBOL ...} ANY} s)
-          (local [(define fun-list (s-exp->list s))
-                  (define sym-list (s-exp->list (second fun-list)))
-                  (define fun-name (s-exp->symbol (first sym-list)))
-                  (define args (rest sym-list))
-                  (define body (third fun-list))]
-                    (fundef fun-name (map s-exp->symbol args) (parse body)))]))
+(test/exn (parse '{+ + +}) "not a valid symbol")
+; (parse '{func {x x} 3}) (lamC ('x 'x))
+; (parse '{+ if with})
+; (parse 'func (x x) 3')
+; expected exception on test expression: '(parse '(+ if with))
+; Saving submission with errors.
 
-(test (parse-fundef '{func {none} {+ 4 5}}) 
-      (fundef 'none (list ) (binop '+ (num 4) (num 5))))
-(test (parse-fundef '{func {pumpkin x} {+ 4 x}}) 
-      (fundef 'pumpkin (list 'x) (binop '+ (num 4) (var 'x))))
-(test (parse-fundef '{func {lots x y} {+ 4 x}}) 
-      (fundef 'lots (list 'x 'y) (binop '+ (num 4) (var 'x))))
-(test (parse-fundef (first (s-exp->list '{{func {f x y} {+ x y}}})))
-      (fundef 'f (list 'x 'y) (binop '+ (var 'x) (var 'y))))
+; consumes a symbol and an environment and returns the number associated with 
+; the symbol
+; taken from 
+; Programming Languages: Application and Interpretation, 
+; by Shriram Krishnamurthi, second edition.
+(define (lookup [for : symbol] [env : Environment]) : Value
+  (cond 
+    [(empty? env) (error 'lookup "unbound identifier")]
+    [else (cond
+            [(symbol=? for (bind-name (first env)))
+             (bind-val (first env))]
+            [else (lookup for (rest env))])]))
 
-; Parses a list of function definitions by consuming an s-expression and 
-; produces a list of FundefC
-(define (parse-prog [s : s-expression]) : (listof FundefC)
-  (local [(define all-funs (s-exp->list s))]
-    (map parse-fundef all-funs)))
+(test (lookup 'x 
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
+      (numV 3))
+(test (lookup 'y 
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
+      (numV 4))
 
-(test (parse-prog '{{func {f x y} {+ x y}}
-                    {func {main} {f 1 2}}})
-      (list (fundef 'f (list 'x 'y) (binop '+ (var 'x) (var 'y)))
-            (fundef 'main (list ) (app 'f (list (num 1) (num 2))))))
-(test (parse-prog '{{func {f} 5}
-                    {func {main} {+ {f} {f}}}})
-      (list (fundef 'f (list ) (num 5))
-            (fundef 'main (list ) (binop '+ (app 'f (list )) (app 'f (list ))))))
+; consumes an operator a left and right value for a binopC and returns the
+; resulting value
+(define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
+  (numV ((some-v (hash-ref binop-table op)) 
+         (numV-num left)
+         (numV-num right))))
 
-; Look up the function in the list of functions in funs
-(define (lookup [a-name : symbol] [funs : (listof FundefC)]) : FundefC
-  (cond [(empty? funs) (error 'lookup "function list is empty")]
-        [else (cond [(equal? a-name (fundef-name (first funs))) (first funs)]
-                    [else (lookup a-name (rest funs))])]))
+(test (binopC-to-NumV '+ (numV 4) (numV 4)) (numV 8))
+(test (binopC-to-NumV '* (numV 4) (numV 4)) (numV 16))
+(test (binopC-to-NumV '- (numV 4) (numV 4)) (numV 0))
+(test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
 
-(test/exn (lookup 'x
-                  (list (fundef 'f (list ) (num 5))
-                        (fundef 'main (list ) 
-                                (binop '+ (app 'f (list )) (app 'f (list ))))))
-          "function list is empty")
-(test (lookup 'f
-              (list (fundef 'f (list ) (num 5))
-                    (fundef 'main (list ) 
-                         (binop '+ (app 'f (list )) (app 'f (list ))))))
-      (fundef 'f (list ) (num 5)))
-(test (lookup 'main (list (fundef 'f (list ) (num 5))
-                          (fundef 'main (list ) 
-                                 (binop '+ (app 'f (list )) (app 'f (list ))))))
-      (fundef 'main (list ) (binop '+ (app 'f (list )) (app 'f (list )))))
-(test (lookup 'main (list (fundef 'add (list ) (binop '+ (num 2) (num 3)))
-                        (fundef 'main (list ) (app 'f (list )))))
-      (fundef 'main (list ) (app 'f (list ))))
+; interp before adding to env?
+; function meant to add bindings to environment
+; consumes a list of symbols, a list of Values and an environment and produces
+; a list of Bindings
+(define (add-to-env [params : (listof symbol)] 
+                    [args : (listof Value)]
+                    [env : Environment]) : (listof Binding)
+  (cond 
+    [(and (empty? params) (empty? args)) empty]
+    [else (cons (bind (first params) (first args)) 
+                (add-to-env (rest params) (rest args) env))]))
+
+(test (add-to-env (list 'x 'y 'z)
+            (list (numV 3)
+                  (numV 5)
+                  (numV 7))
+            empty-env)
+      (list (bind 'x (numV 3))
+            (bind 'y (numV 5))
+            (bind 'z (numV 7))))
 
 ; Interprets the given expression, using the list of funs to resolve 
-; applications.
-; taken from Assignment 2 by John Clements
-(define (interp [expr : OWQQ3] [funs : (listof FundefC)]) : number
-  (type-case OWQQ3 expr
-    [num (n) n]
-    [ifleq (c t f) 
-      (cond [(= (interp c funs) 0) (interp t funs)]
-            [else (interp f funs)])]
-    [binop (s l r) ((some-v (hash-ref binop-table s)) 
-                    (interp l funs) (interp r funs))]
-    [var (id) (error 'interp "unbound identifier")]
-    [app (fn args)
-      (type-case FundefC (lookup fn funs)
-        [fundef (name params body) (interp body funs)])]
-    [else -1]))
+; appClications.
+; taken from Assignment 3 by John Clements
+(define (interp [expr : OWQQ3] 
+                [env : Environment]) : Value
+    (type-case OWQQ3 expr
+      [numC (n) (numV n)]
+      [boolC (b) (boolV b)]
+      [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
+      [idC (id) (lookup id env)]
+      [ifC (c t f) (local [(define condition (interp c env))
+                           (define then (interp t env))
+                           (define els (interp f env))]
+                     (type-case Value condition
+                       [boolV (b) (if b then els)]
+                       [else (error 'interp "expected boolean")]))] 
+      [lamC (params body) (cloV params body env)]
+      [appC (fn args) 
+        (type-case Value (interp fn env)
+          [cloV (params body env)
+            (local [(define (interp-again expr) (interp expr env))
+                    (define arg-vals (map interp-again args))
+                    (define new-env (add-to-env params arg-vals env))]
+              (interp body new-env))]
+          [else (error 'interp "expected function")])]))
 
-(test (interp (ifleq (num 2) (num 0) (num 5)) (list )) 5)
-(test (interp (ifleq (num 0) (num 8) (num 3)) (list )) 8)
-(test (interp (binop '+ (num 3) (num 3)) (list )) 6)
-(test (interp (binop '- (num 3) (num 3)) (list )) 0)
-(test (interp (binop '* (num 3) (num 3)) (list )) 9)
-(test (interp (binop '/ (num 3) (num 3)) (list )) 1)
-(test/exn (interp (var 'x) (list )) "unbound identifier")
-(test (interp (app 'f (list (num 3) (num 4))) 
-              (list (fundef 'f (list 'x 'y) (binop '+ (num 2) (num 3)))))
-      5)
+(test (interp (numC 3) empty-env) (numV 3))
+(test (interp (numC 8) empty-env) (numV 8))
+(test (interp (boolC #t) empty-env) (boolV #t))
+(test (interp (boolC #f) empty-env) (boolV #f))
+(test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
+      (numV 6))
+(test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
+      (numV 0))
+(test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
+      (numV 9))
+(test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
+      (numV 1))
+(test (interp (idC 'x)
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
+      (numV 3))
+(test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
+(test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
+(test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
+          "expected boolean")
+(test/exn (interp (idC 'x) empty-env) "unbound identifier")
+(test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
+      (cloV (list 'x 'y) (numC 3) (list)))
+(test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+                    (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
+              empty-env)
+      (numV 121))
+(test/exn (interp (appC (numC 3) empty) empty-env)
+          "expected function")
 
-; Interprets the function named main from the fundefs.
-; taken from Assignment 2 by John Clements
-(define (interp-fns [funs : (listof FundefC)]) : number
-    (type-case FundefC (lookup 'main funs)
-      (fundef (name args body) (interp body funs))))
+; consumes an expression and parses and interprets it
+; taken from Assignment 3 by John Clements
+(define (top-eval [s : s-expression]) : string
+  (serialize (interp (parse s) empty-env)))
 
-; testcase - no vars
-; testcase - vars but not used
-; testcase - use vars
-(test (interp-fns (list (fundef 'add (list ) (binop '+ (num 2) (num 3)))
-                        (fundef 'main (list ) (app 'add (list )))))
-      5)
-(test (interp-fns (list (fundef 'add (list 'x 'y) (binop '+ (num 2) (num 3)))
-                        (fundef 'main (list ) (app 'add (list (num 10) (num 20))))))
-      5)
+; taken from Assignment 3 by John Clements
+(test (top-eval '{+ 12 4}) "16")
+(test (top-eval '{* 12 4}) "48")
+(test (top-eval '{- 12 4}) "8")
+(test (top-eval '{/ 12 4}) "3")
+(test (top-eval `true) "true")
+(test (top-eval `false) "false")
+(test (top-eval '{if true 3 4}) "3")
+(test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
+(test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
+(test (top-eval '{with {z = {+ 9 14}}
+                       {y = 98}
+                       {+ z y}})
+      "121")
 
-; wrong code - required to save submission
-; (test (interp-fns (list (fundef 'f (list 'x 'y) (binop '+ (var 'x) (var 'y)))
-;                         (fundef 'main (list ) (app 'f (list (num 1) (num 2))))))
-;       3)
-; replaces all occurrences of a var with a number
-; (define (subst [s : s-expression]) : s-expression
-;   )
+
+
+
+
