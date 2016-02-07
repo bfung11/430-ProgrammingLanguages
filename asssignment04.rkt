@@ -34,6 +34,11 @@
               (values '* *)
               (values '/ /))))
 
+;;;;;;;;;;;;;;;;;;;;
+;
+; Environments
+;
+;;;;;;;;;;;;;;;;;;;;
 (define-type Binding
   [bind (name : symbol) (val : Value)])
  
@@ -41,22 +46,19 @@
 (define empty-env empty)
 (define extend-env cons)
 
-; Consumes a value and produces a string
-; taken from Assignment 3 by John Clements
-(define (serialize [value : Value]) : string
-  (type-case Value value
-    [numV (n) (to-string n)]
-    [boolV (b) 
-      (cond 
-        [(equal? b #t) "true"]
-        [else "false"])]
-    [cloV (p b e) "#<procedure>"]))
+;;;;;;;;;;;;;;;;;;;;
+;
+; Stores
+;
+;;;;;;;;;;;;;;;;;;;;
+(define-type-alias Location number)
 
-(test (serialize (numV 4)) "4")
-(test (serialize (boolV true)) "true")
-(test (serialize (boolV false)) "false")
-(test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
-                 "#<procedure>")
+(define-type Storage
+  [cell (location : Location) (value : Value)])
+
+(define-type-alias Store (listof Storage))
+(define empty-store empty)
+(define override-store cons)
 
 ; Parses an expression.
 ; expected vs. actual
@@ -245,6 +247,23 @@
       (numV 121))
 (test/exn (interp (appC (numC 3) empty) empty-env)
           "expected function")
+
+; Consumes a value and produces a string
+; taken from Assignment 3 by John Clements
+(define (serialize [value : Value]) : string
+  (type-case Value value
+    [numV (n) (to-string n)]
+    [boolV (b) 
+      (cond 
+        [(equal? b #t) "true"]
+        [else "false"])]
+    [cloV (p b e) "#<procedure>"]))
+
+(test (serialize (numV 4)) "4")
+(test (serialize (boolV true)) "true")
+(test (serialize (boolV false)) "false")
+(test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
+                 "#<procedure>")
 
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 3 by John Clements
