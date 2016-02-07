@@ -21,6 +21,11 @@
   [appC (fn : OWQQ3) 
         (args : (listof OWQQ3))])
 
+(define-type FundefC
+  [fundef (name : symbol) 
+          (params : (listof symbol)) 
+          (body : OWQQ3)])
+
 (define-type Value
   [numV (num : number)]
   [boolV (bool : boolean)]
