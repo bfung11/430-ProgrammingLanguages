@@ -60,6 +60,12 @@
 (define empty-store empty)
 (define override-store cons)
 
+;;;;;;;;;;;;;;;;;;;;
+;
+; Parser
+;
+;;;;;;;;;;;;;;;;;;;;
+
 ; Parses an expression.
 ; expected vs. actual
 ; taken from Assignment 3 by John Clements
@@ -136,6 +142,12 @@
 ; (parse 'func (x x) 3')
 ; expected exception on test expression: '(parse '(+ if with))
 ; Saving submission with errors.
+
+;;;;;;;;;;;;;;;;;;;;
+;
+; Interpreter
+;
+;;;;;;;;;;;;;;;;;;;;
 
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
