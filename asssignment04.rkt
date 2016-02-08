@@ -53,10 +53,10 @@
 ;;;;;;;;;;;;;;;;;;;;
 (define-type-alias Location number)
 
-(define-type Storage
-  [cell (location : Location) (value : Value)])
+(define-type Sbind
+  [sbind (location : Location) (value : Value)])
 
-(define-type-alias Store (listof Storage))
+(define-type-alias Store (listof Sbind))
 (define empty-store empty)
 (define override-store cons)
 
@@ -203,6 +203,8 @@
       (list (bind 'x (numV 3))
             (bind 'y (numV 5))
             (bind 'z (numV 7))))
+
+; (define (lift v) (lambda (sto)))
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
