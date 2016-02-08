@@ -225,62 +225,65 @@
       [v*s (aval asto)
            ((b aval) asto)])))
 
-
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
 ; taken from Assignment 3 by John Clements
 (define (interp [expr : OWQQ3] 
-                [env : Environment]) : Value
+                [env : Environment]
+                [sto : Store]) : Value*Store
     (type-case OWQQ3 expr
-      [numC (n) (numV n)]
-      [boolC (b) (boolV b)]
-      [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
-      [idC (id) (lookup id env)]
-      [ifC (c t f) (local [(define condition (interp c env))
-                           (define then (interp t env))
-                           (define els (interp f env))]
-                     (type-case Value condition
-                       [boolV (b) (if b then els)]
-                       [else (error 'interp "expected boolean")]))] 
-      [lamC (params body) (cloV params body env)]
-      [appC (fn args) 
-        (type-case Value (interp fn env)
-          [cloV (params body env)
-            (local [(define (interp-again expr) (interp expr env))
-                    (define arg-vals (map interp-again args))
-                    (define new-env (add-to-env params arg-vals env))]
-              (interp body new-env))]
-          [else (error 'interp "expected function")])]))
+      [numC (n) (v*s (numV n) sto)]
+      ; [boolC (b) (boolV b)]
+      ; [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
+      ; [idC (id) (lookup id env)]
+      ; [ifC (c t f) (local [(define condition (interp c env))
+      ;                      (define then (interp t env))
+      ;                      (define els (interp f env))]
+      ;                (type-case Value condition
+      ;                  [boolV (b) (if b then els)]
+      ;                  [else (error 'interp "expected boolean")]))] 
+      ; [lamC (params body) (cloV params body env)]
+      ; [appC (fn args) 
+      ;   (type-case Value (interp fn env)
+      ;     [cloV (params body env)
+      ;       (local [(define (interp-again expr) (interp expr env))
+      ;               (define arg-vals (map interp-again args))
+      ;               (define new-env (add-to-env params arg-vals env))]
+      ;         (interp body new-env))]
+      ;     [else (error 'interp "expected function")])]
+      [else (error 'interp "not implemented")]))
 
-(test (interp (numC 3) empty-env) (numV 3))
-(test (interp (numC 8) empty-env) (numV 8))
-(test (interp (boolC #t) empty-env) (boolV #t))
-(test (interp (boolC #f) empty-env) (boolV #f))
-(test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
-      (numV 6))
-(test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
-      (numV 0))
-(test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
-      (numV 9))
-(test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
-      (numV 1))
-(test (interp (idC 'x)
-              (list (binding 'x (numV 3))
-                    (binding 'y (numV 4))))
-      (numV 3))
-(test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
-(test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
-(test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
-          "expected boolean")
-(test/exn (interp (idC 'x) empty-env) "unbound identifier")
-(test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
-      (cloV (list 'x 'y) (numC 3) (list)))
-(test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
-                    (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
-              empty-env)
-      (numV 121))
-(test/exn (interp (appC (numC 3) empty) empty-env)
-          "expected function")
+(test (interp (numC 3) empty-env empty-store) 
+      (v*s (numV 3) empty-store))
+(test (interp (numC 8) empty-env empty-store) 
+      (v*s (numV 8) empty-store))
+; (test (interp (boolC #t) empty-env) (boolV #t))
+; (test (interp (boolC #f) empty-env) (boolV #f))
+; (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
+;       (numV 6))
+; (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
+;       (numV 0))
+; (test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
+;       (numV 9))
+; (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
+;       (numV 1))
+; (test (interp (idC 'x)
+;               (list (binding 'x (numV 3))
+;                     (binding 'y (numV 4))))
+;       (numV 3))
+; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
+; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
+; (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
+;           "expected boolean")
+; (test/exn (interp (idC 'x) empty-env) "unbound identifier")
+; (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
+;       (cloV (list 'x 'y) (numC 3) (list)))
+; (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+;                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
+;               empty-env)
+;       (numV 121))
+; (test/exn (interp (appC (numC 3) empty) empty-env)
+;           "expected function")
 
 ; Consumes a value and produces a string
 ; taken from Assignment 3 by John Clements
@@ -301,23 +304,23 @@
 
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 3 by John Clements
-(define (top-eval [s : s-expression]) : string
-  (serialize (interp (parse s) empty-env)))
+; (define (top-eval [s : s-expression]) : string
+;   (serialize (interp (parse s) empty-env)))
 
-; taken from Assignment 3 by John Clements
-(test (top-eval '{+ 12 4}) "16")
-(test (top-eval '{* 12 4}) "48")
-(test (top-eval '{- 12 4}) "8")
-(test (top-eval '{/ 12 4}) "3")
-(test (top-eval `true) "true")
-(test (top-eval `false) "false")
-(test (top-eval '{if true 3 4}) "3")
-(test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
-(test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
-(test (top-eval '{with {z = {+ 9 14}}
-                       {y = 98}
-                       {+ z y}})
-      "121")
+; ; taken from Assignment 3 by John Clements
+; (test (top-eval '{+ 12 4}) "16")
+; (test (top-eval '{* 12 4}) "48")
+; (test (top-eval '{- 12 4}) "8")
+; (test (top-eval '{/ 12 4}) "3")
+; (test (top-eval `true) "true")
+; (test (top-eval `false) "false")
+; (test (top-eval '{if true 3 4}) "3")
+; (test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
+; (test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
+; (test (top-eval '{with {z = {+ 9 14}}
+;                        {y = 98}
+;                        {+ z y}})
+;       "121")
 
 
 
