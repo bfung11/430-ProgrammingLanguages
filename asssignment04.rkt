@@ -233,7 +233,7 @@
                 [sto : Store]) : Value*Store
     (type-case OWQQ3 expr
       [numC (n) (v*s (numV n) sto)]
-      ; [boolC (b) (boolV b)]
+      [boolC (b) (v*s (boolV b) sto)]
       ; [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
       ; [idC (id) (lookup id env)]
       ; [ifC (c t f) (local [(define condition (interp c env))
@@ -257,8 +257,10 @@
       (v*s (numV 3) empty-store))
 (test (interp (numC 8) empty-env empty-store) 
       (v*s (numV 8) empty-store))
-; (test (interp (boolC #t) empty-env) (boolV #t))
-; (test (interp (boolC #f) empty-env) (boolV #f))
+(test (interp (boolC #t) empty-env empty-store) 
+      (v*s (boolV #t) empty-store))
+(test (interp (boolC #f) empty-env empty-store) 
+      (v*s (boolV #f) empty-store))
 ; (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
 ;       (numV 6))
 ; (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
