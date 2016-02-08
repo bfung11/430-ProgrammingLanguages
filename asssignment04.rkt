@@ -40,7 +40,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;
 (define-type Binding
-  [bind (name : symbol) (val : Value)])
+  [binding (name : symbol) (val : Value)])
  
 (define-type-alias Environment (listof Binding))
 (define empty-env empty)
@@ -59,6 +59,9 @@
 (define-type-alias Store (listof Sbind))
 (define empty-store empty)
 (define override-store cons)
+
+(define-type Value*Store
+  [v*s (v : Value) (s : Store)])
 
 ;;;;;;;;;;;;;;;;;;;;
 ;
@@ -158,17 +161,17 @@
   (cond 
     [(empty? env) (error 'lookup "unbound identifier")]
     [else (cond
-            [(symbol=? for (bind-name (first env)))
-             (bind-val (first env))]
+            [(symbol=? for (binding-name (first env)))
+             (binding-val (first env))]
             [else (lookup for (rest env))])]))
 
 (test (lookup 'x 
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
+              (list (binding 'x (numV 3))
+                    (binding 'y (numV 4))))
       (numV 3))
 (test (lookup 'y 
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
+              (list (binding 'x (numV 3))
+                    (binding 'y (numV 4))))
       (numV 4))
 
 ; consumes an operator a left and right value for a binopC and returns the
@@ -192,7 +195,7 @@
                     [env : Environment]) : (listof Binding)
   (cond 
     [(and (empty? params) (empty? args)) empty]
-    [else (cons (bind (first params) (first args)) 
+    [else (cons (binding (first params) (first args)) 
                 (add-to-env (rest params) (rest args) env))]))
 
 (test (add-to-env (list 'x 'y 'z)
@@ -200,11 +203,22 @@
                   (numV 5)
                   (numV 7))
             empty-env)
-      (list (bind 'x (numV 3))
-            (bind 'y (numV 5))
-            (bind 'z (numV 7))))
+      (list (binding 'x (numV 3))
+            (binding 'y (numV 5))
+            (binding 'z (numV 7))))
 
-; (define (lift v) (lambda (sto)))
+; (alpha -> alpha-computation)
+; (Value -> ((listof Sbind) -> Value*Store))
+(define (lift v) 
+  (lambda (sto) (v*s v sto)))
+
+; (((alpha-comp (alpha->beta-comp)) -> beta-comp)
+(define (bind [a : 'a] [b : 'b])
+  (lambda (sto)
+    (type-case Value*Store (a sto)
+      [v*s (aval asto)
+           ((b aval) asto)])))
+
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -245,8 +259,8 @@
 (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
       (numV 1))
 (test (interp (idC 'x)
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
+              (list (binding 'x (numV 3))
+                    (binding 'y (numV 4))))
       (numV 3))
 (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
