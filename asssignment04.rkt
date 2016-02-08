@@ -208,11 +208,17 @@
             (binding 'z (numV 7))))
 
 ; (alpha -> alpha-computation)
+; alpha-computation = (Store -> (alpha * Store))
 ; (Value -> ((listof Sbind) -> Value*Store))
 (define (lift v) 
   (lambda (sto) (v*s v sto)))
 
+
+
 ; (((alpha-comp (alpha->beta-comp)) -> beta-comp)
+; alpha-computation (alpha -> )
+; (('a -> Value*Store) (Value -> ((listof Sbind) -> 'b)) -> ('a -> 'b))
+
 (define (bind [a : 'a] [b : 'b])
   (lambda (sto)
     (type-case Value*Store (a sto)
