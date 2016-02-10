@@ -225,23 +225,11 @@
 (define (lift v) 
   (lambda (sto) (v*s v sto)))
 
-
-; (Store -> ('a * Store)) 
-; ('a -> (Store -> ('b * Store))) -> 
-; (Store -> ('b * Store))
-
-(('a -> Value*Store) 
-  ((listof Sbind) -> Value*Store) -> ('a -> Value*Store))
-
-(define (bind [a : 'a] [b : 'b])
+(define (bind a b)
   (lambda (sto)
     (type-case Value*Store (a sto)
-      [v*s (aval asto)
-        (type-case Value*Store (b asto)
-          [v*s (bval bsto) (v*s bval bsto)])])))
-
-(define (bind a b)
-  )
+      [v*s (a-v a-s)
+        ((b a-v) a-s)])))
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
