@@ -6,26 +6,26 @@
 
 (print-only-errors #t)
 
-(define-type OWQQ3
+(define-type OWQQ4
   [numC (n : number)]
   [boolC (b : boolean)]
   [idC (id : symbol)]
-  [ifC (condition : OWQQ3) 
-       (if-true : OWQQ3) 
-       (else-statement : OWQQ3)]
+  [ifC (condition : OWQQ4) 
+       (if-true : OWQQ4) 
+       (else-statement : OWQQ4)]
   [lamC (params : (listof symbol))
-        (body : OWQQ3)]
+        (body : OWQQ4)]
   [binopC (op : symbol) ; operator
-          (l : OWQQ3) 
-          (r : OWQQ3)]
-  [appC (fn : OWQQ3) 
-        (args : (listof OWQQ3))])
+          (l : OWQQ4) 
+          (r : OWQQ4)]
+  [appC (fn : OWQQ4) 
+        (args : (listof OWQQ4))])
 
 (define-type Value
   [numV (num : number)]
   [boolV (bool : boolean)]
   [cloV (params : (listof symbol))
-        (body : OWQQ3)
+        (body : OWQQ4)
         (env : Environment)]
   [nullV])
 
@@ -83,7 +83,7 @@
 ; Parses an expression.
 ; expected vs. actual
 ; taken from Assignment 3 by John Clements
-(define (parse [s : s-expression]) : OWQQ3
+(define (parse [s : s-expression]) : OWQQ4
    (cond 
       [(s-exp-number? s) (numC (s-exp->number s))]
       [(s-exp-match? `true s) (boolC #t)]
@@ -124,6 +124,7 @@
                             (map parse (rest a-list)))]))]))
 
 ; taken from Assignment 3 by John Clements
+; question how to parse new forms like array and set?
 (test (parse '3) (numC 3))
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
@@ -236,9 +237,9 @@
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
 ; taken from Assignment 3 by John Clements
-(define (interp [expr : OWQQ3] 
+(define (interp [expr : OWQQ4] 
                 [env : Environment]) : (Store -> Result)
-    (type-case OWQQ3 expr
+    (type-case OWQQ4 expr
       [numC (n) (lift (numV n))]
       [boolC (b) (lift (boolV b))]
       [binopC (s l r) 
