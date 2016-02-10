@@ -224,8 +224,8 @@
 ; debugging - expected v. actual
 
 ; (Value -> (Store -> Value*Store))
-(define (lift v) 
-  (lambda (sto) (v*s v sto)))
+(define (lift [v : 'a])  : (Computation 'a)
+  (lambda ([sto : Store]) (v*s v sto)))
 
 (define (bind [a : (Computation 'a)]
               [b : ('a -> (Computation 'b))]) : (Computation 'b)
