@@ -62,7 +62,7 @@
 (define empty-store empty)
 (define override-store cons)
 
-(define-type Value*Store
+(define-type Result
   [v*s (v : Value) (s : Store)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -218,16 +218,15 @@
             (binding 'z (numV 7))))
 
 ; alpha-computation = (Store -> (alpha * Store))
-; (Value -> ((listof Sbind) -> Value*Store))
+; (Value -> ((listof Sbind) -> Result))
 ; debugging - expected v. actual
-
 
 (define (lift v) 
   (lambda (sto) (v*s v sto)))
 
 (define (bind a b)
   (lambda (sto)
-    (type-case Value*Store (a sto)
+    (type-case Result (a sto)
       [v*s (a-v a-s)
         ((b a-v) a-s)])))
 
@@ -236,7 +235,7 @@
 ; taken from Assignment 3 by John Clements
 (define (interp [expr : OWQQ3] 
                 [env : Environment]
-                [sto : Store]) : Value*Store
+                [sto : Store]) : Result
     (type-case OWQQ3 expr
       [numC (n) (v*s (numV n) sto)]
       [boolC (b) (v*s (boolV b) sto)]
