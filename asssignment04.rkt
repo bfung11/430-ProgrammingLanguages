@@ -26,7 +26,8 @@
   [boolV (bool : boolean)]
   [cloV (params : (listof symbol))
         (body : OWQQ3)
-        (env : Environment)])
+        (env : Environment)]
+  [nullV])
 
 (define binop-table
   (hash (list (values '+ +)
@@ -315,13 +316,15 @@
       (cond 
         [(equal? b #t) "true"]
         [else "false"])]
-    [cloV (p b e) "#<procedure>"]))
+    [cloV (p b e) "#<procedure>"]
+    [nullV () "null"]))
 
 (test (serialize (numV 4)) "4")
 (test (serialize (boolV true)) "true")
 (test (serialize (boolV false)) "false")
 (test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
                  "#<procedure>")
+(test (serialize (nullV)) "null")
 
 ; consumes an expression and parses and interprets it
 ; taken from Assignment 3 by John Clements
