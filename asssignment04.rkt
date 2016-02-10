@@ -40,8 +40,10 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define-type-alias Location number)
+
 (define-type Binding
-  [binding (name : symbol) (val : Value)])
+  [binding (name : symbol) (val : Location)])
  
 (define-type-alias Environment (listof Binding))
 (define empty-env empty)
@@ -52,8 +54,6 @@
 ; Store Definitions
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-type-alias Location number)
 
 (define-type Sbind
   [sbind (location : Location) (value : Value)])
@@ -167,22 +167,22 @@
 ; taken from 
 ; Programming Languages: Application and Interpretation, 
 ; by Shriram Krishnamurthi, second edition.
-(define (lookup [for : symbol] [env : Environment]) : Value
-  (cond 
-    [(empty? env) (error 'lookup "unbound identifier")]
-    [else (cond
-            [(symbol=? for (binding-name (first env)))
-             (binding-val (first env))]
-            [else (lookup for (rest env))])]))
+; (define (lookup [for : symbol] [env : Environment]) : Value
+;   (cond 
+;     [(empty? env) (error 'lookup "unbound identifier")]
+;     [else (cond
+;             [(symbol=? for (binding-name (first env)))
+;              (binding-val (first env))]
+;             [else (lookup for (rest env))])]))
 
-(test (lookup 'x 
-              (list (binding 'x (numV 3))
-                    (binding 'y (numV 4))))
-      (numV 3))
-(test (lookup 'y 
-              (list (binding 'x (numV 3))
-                    (binding 'y (numV 4))))
-      (numV 4))
+; (test (lookup 'x 
+;               (list (binding 'x (numV 3))
+;                     (binding 'y (numV 4))))
+;       (numV 3))
+; (test (lookup 'y 
+;               (list (binding 'x (numV 3))
+;                     (binding 'y (numV 4))))
+;       (numV 4))
 
 ; consumes an operator a left and right value for a binopC and returns the
 ; resulting value
@@ -255,7 +255,7 @@
       ;                (type-case Value condition
       ;                  [boolV (b) (if b then els)]
       ;                  [else (error 'interp "expected boolean")]))] 
-      [lamC (params body) (lift (cloV params body env))]
+      ; [lamC (params body) (lift (cloV params body env))]
       ; [appC (fn args) 
       ;   (type-case Value (interp fn env)
       ;     [cloV (params body env)
