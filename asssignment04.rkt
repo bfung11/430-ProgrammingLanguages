@@ -200,22 +200,22 @@
 ; function meant to add bindings to environment
 ; consumes a list of symbols, a list of Values and an environment and produces
 ; a list of Bindings
-(define (add-to-env [params : (listof symbol)] 
-                    [args : (listof Value)]
-                    [env : Environment]) : (listof Binding)
-  (cond 
-    [(and (empty? params) (empty? args)) empty]
-    [else (cons (binding (first params) (first args)) 
-                (add-to-env (rest params) (rest args) env))]))
+; (define (add-to-env [params : (listof symbol)] 
+;                     [args : (listof Value)]
+;                     [env : Environment]) : (listof Binding)
+;   (cond 
+;     [(and (empty? params) (empty? args)) empty]
+;     [else (cons (binding (first params) (first args)) 
+;                 (add-to-env (rest params) (rest args) env))]))
 
-(test (add-to-env (list 'x 'y 'z)
-            (list (numV 3)
-                  (numV 5)
-                  (numV 7))
-            empty-env)
-      (list (binding 'x (numV 3))
-            (binding 'y (numV 5))
-            (binding 'z (numV 7))))
+; (test (add-to-env (list 'x 'y 'z)
+;             (list (numV 3)
+;                   (numV 5)
+;                   (numV 7))
+;             empty-env)
+;       (list (binding 'x (numV 3))
+;             (binding 'y (numV 5))
+;             (binding 'z (numV 7))))
 
 ; alpha-computation = (Store -> (alpha * Store))
 ; (Value -> ((listof Sbind) -> Result))
@@ -297,8 +297,8 @@
 ; (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
 ;           "expected boolean")
 ; (test/exn (interp (idC 'x) empty-env) "unbound identifier")
-(test ((interp (lamC (list 'x 'y) (numC 3)) empty-env) empty-store)
-      (v*s (cloV (list 'x 'y) (numC 3) (list)) empty-store))
+; (test ((interp (lamC (list 'x 'y) (numC 3)) empty-env) empty-store)
+      ; (v*s (cloV (list 'x 'y) (numC 3) (list)) empty-store))
 ; (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
 ;                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
 ;               empty-env)
