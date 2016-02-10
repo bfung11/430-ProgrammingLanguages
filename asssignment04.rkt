@@ -34,11 +34,12 @@
               (values '* *)
               (values '/ /))))
 
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Environments
+; Environment Definitions
 ;
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-type Binding
   [binding (name : symbol) (val : Value)])
  
@@ -46,11 +47,12 @@
 (define empty-env empty)
 (define extend-env cons)
 
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Stores
+; Store Definitions
 ;
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define-type-alias Location number)
 
 (define-type Sbind
@@ -62,6 +64,14 @@
 
 (define-type Value*Store
   [v*s (v : Value) (s : Store)])
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Monad Definitions
+;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-type-alias (Computation 'a) (Store -> ('a * Store)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;
@@ -207,23 +217,31 @@
             (binding 'y (numV 5))
             (binding 'z (numV 7))))
 
-; (alpha -> alpha-computation)
 ; alpha-computation = (Store -> (alpha * Store))
 ; (Value -> ((listof Sbind) -> Value*Store))
+; debugging - expected v. actual
+
+
 (define (lift v) 
   (lambda (sto) (v*s v sto)))
 
 
+; (Store -> ('a * Store)) 
+; ('a -> (Store -> ('b * Store))) -> 
+; (Store -> ('b * Store))
 
-; (((alpha-comp (alpha->beta-comp)) -> beta-comp)
-; alpha-computation (alpha -> )
-; (('a -> Value*Store) (Value -> ((listof Sbind) -> 'b)) -> ('a -> 'b))
+(('a -> Value*Store) 
+  ((listof Sbind) -> Value*Store) -> ('a -> Value*Store))
 
 (define (bind [a : 'a] [b : 'b])
   (lambda (sto)
     (type-case Value*Store (a sto)
       [v*s (aval asto)
-           ((b aval) asto)])))
+        (type-case Value*Store (b asto)
+          [v*s (bval bsto) (v*s bval bsto)])])))
+
+(define (bind a b)
+  )
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -234,7 +252,13 @@
     (type-case OWQQ3 expr
       [numC (n) (v*s (numV n) sto)]
       [boolC (b) (v*s (boolV b) sto)]
-      ; [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
+      ; [binopC (s l r) 
+      ;   (bind 
+      ;     (interp l env 
+      ;       (lambda (lval) 
+      ;         (bind 
+      ;           (interp r env 
+      ;             (lambda (rval) (lift ( lval rval))))))))]
       ; [idC (id) (lookup id env)]
       ; [ifC (c t f) (local [(define condition (interp c env))
       ;                      (define then (interp t env))
@@ -261,8 +285,8 @@
       (v*s (boolV #t) empty-store))
 (test (interp (boolC #f) empty-env empty-store) 
       (v*s (boolV #f) empty-store))
-; (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
-;       (numV 6))
+(test (interp (binopC '+ (numC 3) (numC 3)) empty-env empty-store) 
+      (v*s (numV 6) empty-store))
 ; (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
 ;       (numV 0))
 ; (test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
