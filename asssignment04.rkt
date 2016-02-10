@@ -247,14 +247,7 @@
             (bind 
               (interp r env)
               (lambda (rval)
-                (lift (numV 3))))))]
-      ; [binopC (s l r) 
-      ;   (bind 
-      ;     (interp l env 
-      ;       (lambda (lval) 
-      ;         (bind 
-      ;           (interp r env 
-      ;             (lambda (rval) (lift ( lval rval))))))))]
+                (lift (binopC-to-NumV s lval rval))))))]
       ; [idC (id) (lookup id env)]
       ; [ifC (c t f) (local [(define condition (interp c env))
       ;                      (define then (interp t env))
@@ -273,6 +266,12 @@
       ;     [else (error 'interp "expected function")])]
       [else (error 'interp "not implemented")]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Test Cases without Mutation
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (test ((interp (numC 3) empty-env) empty-store) 
       (v*s (numV 3) empty-store))
 (test ((interp (numC 8) empty-env) empty-store)
@@ -281,14 +280,14 @@
       (v*s (boolV #t) empty-store))
 (test ((interp (boolC #f) empty-env) empty-store) 
       (v*s (boolV #f) empty-store))
-; (test (interp (binopC '+ (numC 3) (numC 3)) empty-env empty-store) 
-;       (v*s (numV 6) empty-store))
-; (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
-;       (numV 0))
-; (test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
-;       (numV 9))
-; (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
-;       (numV 1))
+(test ((interp (binopC '+ (numC 3) (numC 3)) empty-env) empty-store) 
+      (v*s (numV 6) empty-store))
+(test ((interp (binopC '- (numC 3) (numC 3)) empty-env) empty-store)
+      (v*s (numV 0) empty-store))
+(test ((interp (binopC '* (numC 3) (numC 3)) empty-env) empty-store)
+      (v*s (numV 9) empty-store))
+(test ((interp (binopC '/ (numC 3) (numC 3)) empty-env) empty-store)
+      (v*s (numV 1) empty-store))
 ; (test (interp (idC 'x)
 ;               (list (binding 'x (numV 3))
 ;                     (binding 'y (numV 4))))
