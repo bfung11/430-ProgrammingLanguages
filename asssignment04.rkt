@@ -255,7 +255,7 @@
       ;                (type-case Value condition
       ;                  [boolV (b) (if b then els)]
       ;                  [else (error 'interp "expected boolean")]))] 
-      ; [lamC (params body) (cloV params body env)]
+      [lamC (params body) (lift (cloV params body env))]
       ; [appC (fn args) 
       ;   (type-case Value (interp fn env)
       ;     [cloV (params body env)
@@ -297,8 +297,8 @@
 ; (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
 ;           "expected boolean")
 ; (test/exn (interp (idC 'x) empty-env) "unbound identifier")
-; (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
-;       (cloV (list 'x 'y) (numC 3) (list)))
+(test ((interp (lamC (list 'x 'y) (numC 3)) empty-env) empty-store)
+      (v*s (cloV (list 'x 'y) (numC 3) (list)) empty-store))
 ; (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
 ;                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
 ;               empty-env)
