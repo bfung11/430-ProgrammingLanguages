@@ -83,28 +83,38 @@
 
 (define empty-array 1)
 
+(define (create-array [num : number]
+                      [elem : 'a]) : (listof 'a)
+  (cond [(= num 0) empty]
+        [else (cons elem (create-array (- num 1) elem))]))
+
 ; Parses an expression.
 ; expected vs. actual
 ; taken from Assignment 3 by John Clements
+
+; bug? array and new-array -> fewer than 1 cell
 (define (parse [s : s-expression]) : OWQQ4
    (cond 
       [(s-exp-number? s) (numC (s-exp->number s))]
       [(s-exp-match? `true s) (boolC #t)]
       [(s-exp-match? `false s) (boolC #f)]
+      [(s-exp-match? `SYMBOL s) 
+        (cond [(some? (hash-ref binop-table (s-exp->symbol s))) 
+               (error 'parse "not a valid symbol")]
+              [else (idC (s-exp->symbol s))])]
+      [(s-exp-match? '{new-array NUMBER ANY} s)
+        (local [(define a-list (s-exp->list s))
+                (define num-cells (s-exp->number (second a-list)))]
+          (cond 
+            [(< num-cells 1) 
+             (error 'parse "cannot create array with less one cell")]
+            [else (arrayC (map parse (create-array num-cells 
+                                                   (third a-list))))]))]
       [(s-exp-match? '{array ANY ...} s)
         (local [(define a-list (s-exp->list s))]
           (cond 
             [(= (length a-list) empty-array) (arrayC empty)]
             [else (arrayC (map parse (rest a-list)))]))]
-      [(s-exp-match? `SYMBOL s) 
-        (cond [(some? (hash-ref binop-table (s-exp->symbol s))) 
-               (error 'parse "not a valid symbol")]
-              [else (idC (s-exp->symbol s))])]
-      ; [(s-exp-match `{new-array OWQQ4 OWQQ4} s)
-      ;   (local [(define a-list (s-exp->list s))]
-      ;     (parse (second s)) (parse (third s))
-      ;     )]
-
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
@@ -149,6 +159,10 @@
                     (boolC #f) 
                     (binopC '+ (numC 3) (numC 2))
                     (idC 'x))))
+(test (parse '{new-array 3 true})
+      (arrayC (list (boolC #t)
+                    (boolC #t)
+                    (boolC #t))))
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
 (test (parse '{func {} {+ 1 2}}) 
       (lamC empty (binopC '+ (numC 1) (numC 2))))
