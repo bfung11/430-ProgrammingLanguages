@@ -10,6 +10,7 @@
   [numC (n : number)]
   [boolC (b : boolean)]
   [idC (id : symbol)]
+  [arrayC (elements : (listof OWQQ4))]
   [ifC (condition : OWQQ4) 
        (if-true : OWQQ4) 
        (else-statement : OWQQ4)]
@@ -80,6 +81,8 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;
 
+(define empty-array 1)
+
 ; Parses an expression.
 ; expected vs. actual
 ; taken from Assignment 3 by John Clements
@@ -88,10 +91,20 @@
       [(s-exp-number? s) (numC (s-exp->number s))]
       [(s-exp-match? `true s) (boolC #t)]
       [(s-exp-match? `false s) (boolC #f)]
+      [(s-exp-match? '{array ANY ...} s)
+        (local [(define a-list (s-exp->list s))]
+          (cond 
+            [(= (length a-list) empty-array) (arrayC empty)]
+            [else (arrayC (map parse (rest a-list)))]))]
       [(s-exp-match? `SYMBOL s) 
         (cond [(some? (hash-ref binop-table (s-exp->symbol s))) 
                (error 'parse "not a valid symbol")]
               [else (idC (s-exp->symbol s))])]
+      ; [(s-exp-match `{new-array OWQQ4 OWQQ4} s)
+      ;   (local [(define a-list (s-exp->list s))]
+      ;     (parse (second s)) (parse (third s))
+      ;     )]
+
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
@@ -129,6 +142,13 @@
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
 (test (parse `x) (idC 'x))
+(test (parse '{array})
+      (arrayC empty))
+(test (parse '{array 3 false {+ 3 2} x})
+      (arrayC (list (numC 3) 
+                    (boolC #f) 
+                    (binopC '+ (numC 3) (numC 2))
+                    (idC 'x))))
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
 (test (parse '{func {} {+ 1 2}}) 
       (lamC empty (binopC '+ (numC 1) (numC 2))))
@@ -229,10 +249,19 @@
 
 (define (bind [a : (Computation 'a)]
               [b : ('a -> (Computation 'b))]) : (Computation 'b)
-  (lambda (sto)
+  (lambda ([sto : Store])
     (type-case Result (a sto)
       [v*s (a-v a-s)
         ((b a-v) a-s)])))
+
+(define-syntax (sdo stx)
+  (syntax-case stx (<-)
+    [(_ [dc <- rhs]) #'rhs]
+    [(_ rhs) #'rhs]
+    [(_ [name <- rhs] clause ...)
+     #'(bind rhs (lambda (name) (sdo clause ...)))]
+    [(_ rhs clause ...)
+     #'(bind rhs (lambda (unused) (sdo clause ...)))]))
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
