@@ -16,6 +16,8 @@
   [array-setC (id : OWQQ4)
               (index : OWQQ4)
               (new-value : OWQQ4)]
+  [setC (id : symbol)
+        (new-value : OWQQ4)]
   [ifC (condition : OWQQ4) 
        (if-true : OWQQ4) 
        (else-statement : OWQQ4)]
@@ -137,7 +139,10 @@
           (array-setC (parse (first a-list))
                       (parse (first (s-exp->list (second a-list))))
                       (parse (fourth a-list))))]
-      [(s-exp-match? '{SYMBOL <- ANY} s) (error 'parse "not implemented")]
+      [(s-exp-match? '{SYMBOL <- ANY} s) 
+        (local [(define a-list (s-exp->list s))]
+          (setC (s-exp->symbol (first a-list)) 
+                (parse (third a-list))))]
       [(s-exp-match? '{begin ANY ANY ...} s) (error 'parse "not implemented")]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
@@ -205,6 +210,12 @@
       (array-setC (idC 'p) 
                   (binopC '+ (numC 3) (idC 'x)) 
                   (binopC '- (idC 'x) (numC 5))))
+(test (parse '{p <- 3})
+      (setC 'p (numC 3)))
+(test (parse '{p <- x})
+      (setC 'p (idC 'x)))
+(test (parse '{p <- {+ 3 y}})
+      (setC 'p (binopC '+ (numC 3) (idC 'y))))
 
 ; all other
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
