@@ -11,6 +11,8 @@
   [boolC (b : boolean)]
   [idC (id : symbol)]
   [arrayC (elements : (listof OWQQ4))]
+  [array-refC (name : OWQQ4)
+              (index : OWQQ4)]
   [ifC (condition : OWQQ4) 
        (if-true : OWQQ4) 
        (else-statement : OWQQ4)]
@@ -35,6 +37,8 @@
               (values '- -)
               (values '* *)
               (values '/ /))))
+
+(define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -88,10 +92,16 @@
   (cond [(= num 0) empty]
         [else (cons elem (create-array (- num 1) elem))]))
 
+(define (is-id-legal? [sym : symbol]) : boolean
+  (and (none? (hash-ref binop-table sym))
+       (not (member sym id-keywords))))
+
+(test (is-id-legal? 'if) #f)
+(test (is-id-legal? 'a) #t)
+
 ; Parses an expression.
 ; expected vs. actual
 ; taken from Assignment 3 by John Clements
-
 ; bug? array and new-array -> fewer than 1 cell
 (define (parse [s : s-expression]) : OWQQ4
    (cond 
@@ -99,9 +109,8 @@
       [(s-exp-match? `true s) (boolC #t)]
       [(s-exp-match? `false s) (boolC #f)]
       [(s-exp-match? `SYMBOL s) 
-        (cond [(some? (hash-ref binop-table (s-exp->symbol s))) 
-               (error 'parse "not a valid symbol")]
-              [else (idC (s-exp->symbol s))])]
+        (cond [(is-id-legal? (s-exp->symbol s)) (idC (s-exp->symbol s))]
+              [else (error 'parse "not a valid symbol")])]
       [(s-exp-match? '{new-array NUMBER ANY} s)
         (local [(define a-list (s-exp->list s))
                 (define num-cells (s-exp->number (second a-list)))]
@@ -115,10 +124,14 @@
           (cond 
             [(= (length a-list) empty-array) (arrayC empty)]
             [else (arrayC (map parse (rest a-list)))]))]
+      [(s-exp-match? '{ref SYMBOL [NUMBER]} s)
+        (local [(define a-list (s-exp->list s))]
+          (array-refC (parse (second a-list)) 
+                      (parse (first (s-exp->list (third a-list))))))]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
-               (parse (third a-list)) 
+               (parse (third a-list))
                (parse (fourth a-list))))]
       [(s-exp-match? '{with {SYMBOL = ANY} ... ANY} s)
         (local [(define a-list (s-exp->list s))
@@ -139,12 +152,17 @@
          (local [(define a-list (s-exp->list s))
                  (define first-elem (first a-list))]
           (cond [(and (s-exp-symbol? first-elem) 
-                      (some? (hash-ref binop-table (s-exp->symbol first-elem))))
+                      (some? (hash-ref binop-table 
+                                       (s-exp->symbol first-elem))))
                         (binopC (s-exp->symbol first-elem)
                                 (parse (second a-list)) 
                                 (parse (third a-list)))]
                 [else (appC (parse first-elem)
-                            (map parse (rest a-list)))]))]))
+                            (map parse (rest a-list)))]))]
+      [else (error 'parse "not a legal expression")]))
+
+(define a-list (s-exp->list '{ref p [{+ 3 2}]}))
+(first (s-exp->list (third a-list)))
 
 ; taken from Assignment 3 by John Clements
 ; question how to parse new forms like array and set?
@@ -163,6 +181,13 @@
       (arrayC (list (boolC #t)
                     (boolC #t)
                     (boolC #t))))
+(test (parse '{ref p [3]})
+      (array-refC (idC 'p) (numC 3)))
+; comes it as a symbol rather than an s-exp
+(test (parse '{ref p [x]})
+      (array-refC (idC 'p) (idC 'x)))
+; (test (parse '{ref p [{+ 3 2}]})
+;       (array-refC (idC 'p) (binopC '+ (numC 3) (numC 2))))
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
 (test (parse '{func {} {+ 1 2}}) 
       (lamC empty (binopC '+ (numC 1) (numC 2))))
@@ -268,14 +293,14 @@
       [v*s (a-v a-s)
         ((b a-v) a-s)])))
 
-(define-syntax (sdo stx)
+(define-syntax (do stx)
   (syntax-case stx (<-)
     [(_ [dc <- rhs]) #'rhs]
     [(_ rhs) #'rhs]
     [(_ [name <- rhs] clause ...)
-     #'(bind rhs (lambda (name) (sdo clause ...)))]
+     #'(bind rhs (lambda (name) (do clause ...)))]
     [(_ rhs clause ...)
-     #'(bind rhs (lambda (unused) (sdo clause ...)))]))
+     #'(bind rhs (lambda (unused) (do clause ...)))]))
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -286,14 +311,13 @@
       [numC (n) (lift (numV n))]
       [boolC (b) (lift (boolV b))]
       [binopC (s l r) 
-        (bind 
-          (interp l env)
-          (lambda (lval) 
-            (bind 
-              (interp r env)
-              (lambda (rval)
-                (lift (binopC-to-NumV s lval rval))))))]
+        (do [lval <- (interp l env)]
+            [rval <- (interp r env)]
+            (lift (binopC-to-NumV s lval rval)))]
       ; [idC (id) (lookup id env)]
+      ; new-array
+      ; array
+      ; ref
       ; [ifC (c t f) (local [(define condition (interp c env))
       ;                      (define then (interp t env))
       ;                      (define els (interp f env))]
