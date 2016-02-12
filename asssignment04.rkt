@@ -106,6 +106,16 @@
 (test (is-id-legal? 'if) #f)
 (test (is-id-legal? 'a) #t)
 
+; takes a symbol list and checks whether all symbols are unique
+(define (is-symbol-unique? [sym-list : (listof symbol)]) : boolean
+  (cond 
+    [(empty? sym-list) #t]
+    [else (and (not (member (first sym-list) (rest sym-list)))
+               (is-symbol-unique? (rest sym-list)))]))
+
+(test (is-symbol-unique? (list 'a 'b 'a)) #f)
+(test (is-symbol-unique? (list 'a 'b 'c)) #t)
+
 ; Parses an expression.
 ; expected vs. actual
 ; taken from Assignment 3 by John Clements
@@ -166,7 +176,9 @@
         (local [(define a-list (s-exp->list s))
                 (define params 
                         (map s-exp->symbol (s-exp->list (second a-list))))]
-          (lamC params (parse (third a-list))))]
+          (cond 
+            [(is-symbol-unique? params) (lamC params (parse (third a-list)))]
+            [else (error 'parse "params not unique")]))]
       [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-elem (first a-list))]
@@ -236,11 +248,15 @@
 (test (parse '{{func {z y} {+ z y}} {+ 9 14} 98})
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
+(test/exn (parse '{func {x x} 3})
+          "params not unique")
+
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
 (test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
 (test (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (test (parse '{/ x 3}) (binopC '/ (idC 'x) (numC 3)))
+(test/exn (parse '{+ + +}) "not a valid symbol")
 (test (parse '{f 3 4}) (appC (idC 'f) (list (numC 3) (numC 4))))
 (test (parse '{with {z = {+ 9 14}}
                     {y = 98}
@@ -248,10 +264,7 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
-(test/exn (parse '{+ + +}) "not a valid symbol")
 ; (parse '{func {x x} 3}) (lamC ('x 'x))
-; (parse 'func (x x) 3')
-; expected exception on test expression: '(parse '(+ if with))
 ; Saving submission with errors.
 
 ;;;;;;;;;;;;;;;;;;;;
