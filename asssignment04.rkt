@@ -67,6 +67,7 @@
 
 (define-type-alias Store (hashof Location Value))
 (define empty-store (hash empty))
+(define store-loc -1) ; start at -1 because after add, starts at index 0
 
 (define-type Result
   [v*s (v : Value) (s : Store)])
@@ -118,7 +119,7 @@
       [(s-exp-match? `SYMBOL s) 
         (cond [(is-id-legal? (s-exp->symbol s)) (idC (s-exp->symbol s))]
               [else (error 'parse "not a valid symbol")])]
-      [(s-exp-match? '{new-array NUMBER ANY} s)
+      [(s-exp-match? '{new-array ANY ANY} s)
         (local [(define a-list (s-exp->list s))
                 (define num-cells (s-exp->number (second a-list)))]
           (cond 
@@ -293,22 +294,21 @@
 ; function meant to add bindings to environment
 ; consumes a list of symbols, a list of Values and an environment and produces
 ; a list of Bindings
-; (define (add-to-env [params : (listof symbol)] 
-;                     [args : (listof Value)]
-;                     [env : Environment]) : (listof Binding)
-;   (cond 
-;     [(and (empty? params) (empty? args)) empty]
-;     [else (cons (binding (first params) (first args)) 
-;                 (add-to-env (rest params) (rest args) env))]))
+(define (add-to-env [params : (listof symbol)] 
+                    [args : (listof Location)]
+                    [env : Environment]) : Environment
+  (cond 
+    [(and (empty? params) (empty? args)) env]
+    [else (add-to-env (rest params) 
+          (rest args)
+          (hash-set env (first params) (first args)))]))
 
-; (test (add-to-env (list 'x 'y 'z)
-;             (list (numV 3)
-;                   (numV 5)
-;                   (numV 7))
-;             empty-env)
-;       (list (binding 'x (numV 3))
-;             (binding 'y (numV 5))
-;             (binding 'z (numV 7))))
+(test (add-to-env (list 'x 'y 'z)
+                  (list 3 5 7)
+                  empty-env)
+      (hash (list (values 'x 3)
+                  (values 'y 5)
+                  (values 'z 7))))
 
 ; alpha-computation = (Store -> (alpha * Store))
 ; (Value -> ((listof Sbind) -> Result))
@@ -353,6 +353,22 @@
 (define test-sto (hash (list (values 1 (numV 10)) 
                              (values 2 (numV 11)))))
 
+(define (add-to-store [elements : (listof Value)]
+                      [store : Store]) : Store
+  (cond 
+    [(empty? elements) store]
+    [else (begin (set! store-loc (+ 1 store-loc))
+                 (add-to-store (rest elements)
+                               (hash-set store
+                                         store-loc
+                                         (first elements))))]))
+
+(test (add-to-store empty empty-store) empty-store)
+(test (add-to-store (list (numV 9) (numV 10) (numV 11)) empty-store)
+      (hash (list (values 0 (numV 9))
+                  (values 1 (numV 10))
+                  (values 2 (numV 11)))))
+
 (define (lookup-store [loc : Location]) : (Computation Value)
   (lambda ([store : Store])
     (type-case (optionof Value) (hash-ref store loc)
@@ -380,9 +396,11 @@
         (type-case (optionof Location) (hash-ref env id)
             [none () (error 'interp "not in environment")]
             [some (loc) (lookup-store loc)])]
-      ; new-array
+      [arrayC (elems) 
+        (interp (first elems) env)]
       ; array
       ; ref
+      ; <-
       [ifC (c t f) 
         (do [cval <- (interp c env)]
             [tval <- (interp t env)]
@@ -390,7 +408,7 @@
               (type-case Value cval
                 [boolV (b) (if b (interp t env) (interp f env))]
                 [else (error 'interp "expected boolean")]))]
-      ; [lamC (params body) (lift (cloV params body env))]
+      [lamC (params body) (lift (cloV params body env))]
       ; [appC (fn args) 
       ;   (type-case Value (interp fn env)
       ;     [cloV (params body env)
@@ -433,21 +451,15 @@
       (v*s-v (v*s (numV 5) empty-store)))
 (test/exn (v*s-v ((interp (ifC (numC 5) (numC 4) (numC 5)) test-env) test-sto))
           "expected boolean")
-
-; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
-; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
-; (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
-;           "expected boolean")
-; (test ((interp (lamC (list 'x 'y) (numC 3)) empty-env) empty-store)
-      ; (v*s (cloV (list 'x 'y) (numC 3) (list)) empty-store))
-; (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
+(test (v*s-v ((interp (lamC (list 'x 'y) (numC 3)) test-env) test-sto))
+      (v*s-v (v*s (cloV (list 'x 'y) (numC 3) test-env) empty-store)))
+; (test ((interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
 ;                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
 ;               empty-env)
-;       (numV 121))
+;       empty-store)
+;       (v*s-v (v*s (numV 121) empty-store)))
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
-(test/exn (interp (appC (numC 3) empty) empty-env)
-          "not implemented")
 
 ; Consumes a value and produces a string
 ; taken from Assignment 3 by John Clements
