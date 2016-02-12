@@ -355,10 +355,22 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;
 
-(define test-env (hash (list (values 'x 1) 
-                             (values 'y 2))))
-(define test-sto (hash (list (values 1 (numV 10)) 
-                             (values 2 (numV 11)))))
+(define test-env (hash (list (values 'a 0) 
+                             (values 'b 4)
+                             (values 'x 10)
+                             (values 'y 11))))
+(define test-sto (hash (list (values 0 (arrayV 1 3))
+                             (values 1 (numV 100))
+                             (values 2 (numV 110))
+                             (values 3 (numV 120))
+                             (values 4 (arrayV 5 4))
+                             (values 5 (numV 14))
+                             (values 6 (numV 5))
+                             (values 7 (boolV #t))
+                             (values 8 (boolV #f))
+                             (values 9 (numV 100))
+                             (values 10 (numV 200))
+                             (values 11 (numV 50)))))
 
 (define (add-to-store [elements : (listof Value)]
                       [store : Store]) : Store
@@ -376,23 +388,6 @@
                   (values 1 (numV 10))
                   (values 2 (numV 11)))))
 
-(define (deref-array [id : OWQQ4]
-                     [index : OWQQ4]
-                     [env : Environment]) : (Computation Value)
-  (do [idval <- (interp id env)]
-    (type-case Value idval
-      [arrayV (loc len)
-        (do [indexval <- (interp index env)]
-          (type-case Value indexval
-            [numV (n) 
-              (cond 
-                [(and (<= n 0)
-                      (< n len))
-                  (lift (do-binop '+ (numV n) (numV loc)))]
-                [else (error 'deref-array "index out of bounds")])]
-            [else (error 'deref-array "expected index")]))]
-      [else (error 'deref-array "expected an array")])))
-
 (define (lookup-store [loc : Location]) : (Computation Value)
   (lambda ([store : Store])
     (type-case (optionof Value) (hash-ref store loc)
@@ -400,7 +395,7 @@
       [some (val) (v*s val store)])))
 
 (test (v*s-v ((lookup-store 1) test-sto))
-      (v*s-v (v*s (numV 10) empty-store)))
+      (v*s-v (v*s (numV 100) empty-store)))
 (test/exn ((lookup-store 1000) test-sto)
           "not in store")
 
@@ -423,11 +418,11 @@
       [arrayC (elems) 
         (interp (first elems) env)]
       ; array
-      ; [array-refC (id index) 
-      ;   (do [indexval <- (deref-array id index env)]
-      ;     (type-case Value indexval
-      ;       [numV (n) (lookup-store n)]
-      ;       [else (error 'interp "not an index")]))]
+      [array-refC (id index) 
+        (do [loc <- (deref-array id index env)]
+          (type-case Value loc
+            [numV (n) (lookup-store n)]
+            [else (error 'interp "not a location")]))]
       ; <>
       [ifC (c t f) 
         (do [cval <- (interp c env)]
@@ -470,7 +465,7 @@
 (test ((interp (binopC '/ (numC 3) (numC 3)) empty-env) empty-store)
       (v*s (numV 1) empty-store))
 (test (v*s-v ((interp (idC 'x) test-env) test-sto))
-      (v*s-v (v*s (numV 10) empty-store)))
+      (v*s-v (v*s (numV 200) empty-store)))
 (test/exn (interp (idC 'z) test-env)
           "not in environment")
 (test (v*s-v ((interp (ifC (boolC #t) (numC 4) (numC 5)) test-env) test-sto))
@@ -481,6 +476,14 @@
           "expected boolean")
 (test (v*s-v ((interp (lamC (list 'x 'y) (numC 3)) test-env) test-sto))
       (v*s-v (v*s (cloV (list 'x 'y) (numC 3) test-env) empty-store)))
+(test (v*s-v ((interp (array-refC (idC 'a) (numC 1)) test-env) test-sto))
+      (v*s-v (v*s (numV 110) test-sto)))
+; (test (v*s-v ((interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env) test-sto))
+;       (v*s-v (v*s (arrayV 3 3) empty-store)))
+
+; (test (v*s-v ((interp (array-refC (idC 'a) (numC 3)) test-env) test-sto))
+;       (v*s-v (v*s (numV 12) empty-store)))
+; (test )
 ; (test ((interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
 ;                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
 ;               empty-env)
@@ -488,6 +491,44 @@
 ;       (v*s-v (v*s (numV 121) empty-store)))
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Interpreter Helper Functions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (get-store-location [id : symbol]
+                            [env : Environment]) : Location
+  (type-case (optionof Location) (hash-ref env id)
+    [none () (error 'interp "not in environment")]
+    [some (loc) loc]))
+
+(define (deref-array [id : OWQQ4]
+                     [index : OWQQ4]
+                     [env : Environment]) : (Computation Value)
+  (do [arr-loc <- (interp id env)]
+    (type-case Value arr-loc
+      [arrayV (arr-start len)
+        (do [indexval <- (interp index env)]
+          (type-case Value indexval
+            [numV (shift) 
+              (cond 
+                [(and (>= shift 0)
+                      (< shift len))
+                  (lookup-store (+ arr-start shift))]
+                [else (error 'deref-array "index out of bounds")])]
+            [else (error 'deref-array "expected index")]))]
+      [else (error 'deref-array "expected array")])))
+
+(test (v*s-v ((deref-array (idC 'a) (numC 1) test-env) test-sto))
+      (v*s-v (v*s (numV 110) test-sto)))
+(test/exn (v*s-v ((deref-array (boolC #t) (numC 2) test-env) test-sto))
+          "expected array")
+(test/exn (v*s-v ((deref-array (idC 'a) (boolC #f) test-env) test-sto))
+          "expected index")
+(test/exn (v*s-v ((deref-array (idC 'a) (numC 100) test-env) test-sto))
+          "index out of bounds")
 
 ; Consumes a value and produces a string
 ; taken from Assignment 3 by John Clements
