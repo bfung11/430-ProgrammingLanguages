@@ -358,7 +358,9 @@
 (define test-env (hash (list (values 'a 0) 
                              (values 'b 4)
                              (values 'x 10)
-                             (values 'y 11))))
+                             (values 'y 11)
+                             (values 'c 12)
+                             (values 'd 16))))
 (define test-sto (hash (list (values 0 (arrayV 1 3))
                              (values 1 (numV 100))
                              (values 2 (numV 110))
@@ -370,7 +372,15 @@
                              (values 8 (boolV #f))
                              (values 9 (numV 100))
                              (values 10 (numV 200))
-                             (values 11 (numV 50)))))
+                             (values 11 (numV 50))
+                             (values 12 (arrayV 13 3))
+                             (values 13 (numV 101))
+                             (values 14 (numV 102))
+                             (values 15 (numV 103))
+                             (values 16 (arrayV 17 3))
+                             (values 17 (numV 201))
+                             (values 18 (numV 202))
+                             (values 19 (numV 203)))))
 
 (define (add-to-store [elements : (listof Value)]
                       [store : Store]) : Store
@@ -388,18 +398,26 @@
                   (values 1 (numV 10))
                   (values 2 (numV 11)))))
 
+(define (set-in-store! [loc : Location]
+                       [new-value : Value]) : (Computation Value)
+  (lambda ([store : Store])
+    (v*s (begin (hash-set store loc new-value) (nullV)) store)))
+
+(test (v*s-v ((set-in-store! 14 (numV 500)) test-sto))
+      (v*s-v (v*s (nullV) empty-store)))
+
 (define (lookup-store [loc : Location]) : (Computation Value)
   (lambda ([store : Store])
     (type-case (optionof Value) (hash-ref store loc)
-      [none () (error 'lookup-store (to-string loc))]
+      [none () (error 'lookup-store "not in store")]
       [some (val) (v*s val store)])))
 
 (test (v*s-v ((lookup-store 0) test-sto))
       (v*s-v (v*s (arrayV 1 3) empty-store)))
 (test (v*s-v ((lookup-store 1) test-sto))
       (v*s-v (v*s (numV 100) empty-store)))
-; (test/exn ((lookup-store 1000) test-sto)
-;           "not in store")
+(test/exn ((lookup-store 1000) test-sto)
+          "not in store")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -433,12 +451,12 @@
 (test/exn (v*s-v ((get-array-index (arrayV 1 3) (numV 100) test-env) test-sto))
           "index out of bounds")
 
-; (define (set-array [id : Value]
-;                    [index : Value]
-;                    [new-value : Value]
-;                    [env : Environment]) : (Computation Value)
-;   (type-case (get-array-index id index env)
-; )
+(define (set-array [location : Value]
+                   [new-value : Value]
+                   [env : Environment]) : (Computation Value)
+  (type-case Value location
+    [numV (v) (set-in-store! v new-value)]
+    [else (error 'set-array "not in hash map")]))
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -463,14 +481,13 @@
         (do [arr-start <- (interp id env)]
             [shift <- (interp index env)]
             [loc <- (get-array-index arr-start shift env)]
-          (type-case Value loc
-            [numV (n) (lookup-store n)]
-            [else (error 'interp "not a location")]))]
-      ; [array-setC (id index val)
-      ;   (do [arr-start <- (interp id env)]
-      ;       [shift <- (interp index env)]
-      ;       [new-val <- (interp val env)]
-      ;       ())]
+            (lookup-store n))]
+      [array-setC (id index val)
+        (do [arr-start <- (interp id env)]
+            [shift <- (interp index env)]
+            [arr-index <- (get-array-index arr-start shift env)]
+            [new-val <- (interp val env)]
+            (set-array arr-index new-val env))]
       [ifC (c t f) 
         (do [cval <- (interp c env)]
             [tval <- (interp t env)]
@@ -529,6 +546,8 @@
       (v*s-v (v*s (numV 110) test-sto)))
 (test (v*s-v ((interp (array-refC (idC 'b) (numC 1)) test-env) test-sto))
       (v*s-v (v*s (numV 150) test-sto)))
+(test (v*s-v ((interp (array-setC (idC 'd) (numC 1) (numC 188)) test-env) test-sto))
+      (v*s-v (v*s (nullV) test-sto)))
 ; (test (v*s-v ((interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env) test-sto))
 ;       (v*s-v (v*s (arrayV 3 3) empty-store)))
 
