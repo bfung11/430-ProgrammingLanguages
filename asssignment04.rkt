@@ -18,6 +18,7 @@
               (new-value : OWQQ4)]
   [setC (id : symbol)
         (new-value : OWQQ4)]
+  [beginC (functions : (listof OWQQ4))]
   [ifC (condition : OWQQ4) 
        (if-true : OWQQ4) 
        (else-statement : OWQQ4)]
@@ -143,7 +144,9 @@
         (local [(define a-list (s-exp->list s))]
           (setC (s-exp->symbol (first a-list)) 
                 (parse (third a-list))))]
-      [(s-exp-match? '{begin ANY ANY ...} s) (error 'parse "not implemented")]
+      [(s-exp-match? '{begin ANY ANY ...} s) 
+        (local [(define a-list (s-exp->list s))]
+          (beginC (map parse (rest a-list))))]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
@@ -216,6 +219,9 @@
       (setC 'p (idC 'x)))
 (test (parse '{p <- {+ 3 y}})
       (setC 'p (binopC '+ (numC 3) (idC 'y))))
+(test (parse '{begin {f x} 9})
+      (beginC (list (appC (idC 'f) (list (idC 'x))) 
+                    (numC 9))))
 
 ; all other
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
