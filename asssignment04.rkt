@@ -11,8 +11,11 @@
   [boolC (b : boolean)]
   [idC (id : symbol)]
   [arrayC (elements : (listof OWQQ4))]
-  [array-refC (name : OWQQ4)
+  [array-refC (id : OWQQ4)
               (index : OWQQ4)]
+  [array-setC (id : OWQQ4)
+              (index : OWQQ4)
+              (new-value : OWQQ4)]
   [ifC (condition : OWQQ4) 
        (if-true : OWQQ4) 
        (else-statement : OWQQ4)]
@@ -129,7 +132,11 @@
         (local [(define a-list (s-exp->list s))]
           (array-refC (parse (second a-list)) 
                       (parse (first (s-exp->list (third a-list))))))]
-      [(s-exp-match? '{ANY[ANY] <- ANY} s) (error 'parse "not implemented")]
+      [(s-exp-match? '{ANY[ANY] <- ANY} s)
+        (local [(define a-list (s-exp->list s))]
+          (array-setC (parse (first a-list))
+                      (parse (first (s-exp->list (second a-list))))
+                      (parse (fourth a-list))))]
       [(s-exp-match? '{SYMBOL <- ANY} s) (error 'parse "not implemented")]
       [(s-exp-match? '{begin ANY ANY ...} s) (error 'parse "not implemented")]
       [(s-exp-match? `{if ANY ANY ANY} s) 
@@ -166,11 +173,13 @@
       [else (error 'parse "not a legal expression")]))
 
 ; taken from Assignment 3 by John Clements
-; question how to parse new forms like array and set?
+; base types test cases
 (test (parse '3) (numC 3))
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
 (test (parse `x) (idC 'x))
+
+; array test cases
 (test (parse '{array})
       (arrayC empty))
 (test (parse '{array 3 false {+ 3 2} x})
@@ -184,11 +193,20 @@
                     (boolC #t))))
 (test (parse '{ref p [3]})
       (array-refC (idC 'p) (numC 3)))
-; comes it as a symbol rather than an s-exp
 (test (parse '{ref p [x]})
       (array-refC (idC 'p) (idC 'x)))
 (test (parse '{ref p [{+ 3 2}]})
       (array-refC (idC 'p) (binopC '+ (numC 3) (numC 2))))
+(test (parse '{p [15] <- 3})
+      (array-setC (idC 'p) (numC 15) (numC 3)))
+(test (parse '{p [x] <- x})
+      (array-setC (idC 'p) (idC 'x) (idC 'x)))
+(test (parse '{p [{+ 3 x}] <- {- x 5}})
+      (array-setC (idC 'p) 
+                  (binopC '+ (numC 3) (idC 'x)) 
+                  (binopC '- (idC 'x) (numC 5))))
+
+; all other
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
 (test (parse '{func {} {+ 1 2}}) 
       (lamC empty (binopC '+ (numC 1) (numC 2))))
