@@ -264,9 +264,6 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
-; (parse '{func {x x} 3}) (lamC ('x 'x))
-; Saving submission with errors.
-
 ;;;;;;;;;;;;;;;;;;;;
 ;
 ; Interpreter
@@ -278,7 +275,7 @@
 ; taken from 
 ; Programming Languages: Application and Interpretation, 
 ; by Shriram Krishnamurthi, second edition.
-; (define (lookup [for : symbol] [env : Environment]) : Value
+; (define (lookup-evn [for : symbol] [env : Environment]) : Value
 ;   (cond 
 ;     [(empty? env) (error 'lookup "unbound identifier")]
 ;     [else (cond
@@ -352,11 +349,13 @@
     [(_ rhs clause ...)
      #'(bind rhs (lambda (unused) (do clause ...)))]))
 
+; (define (lookup-store ))
+
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
 ; taken from Assignment 3 by John Clements
 (define (interp [expr : OWQQ4] 
-                [env : Environment]) : (Store -> Result)
+                [env : Environment]) : (Computation Value)
     (type-case OWQQ4 expr
       [numC (n) (lift (numV n))]
       [boolC (b) (lift (boolV b))]
@@ -364,7 +363,7 @@
         (do [lval <- (interp l env)]
             [rval <- (interp r env)]
             (lift (binopC-to-NumV s lval rval)))]
-      ; [idC (id) (lookup id env)]
+      ; [idC (id) (lookup-env id env)]
       ; new-array
       ; array
       ; ref
