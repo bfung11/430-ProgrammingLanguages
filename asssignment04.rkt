@@ -346,11 +346,21 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;
 
+(define test-env (hash (list (values 'x 1) 
+                             (values 'y 2))))
+(define test-sto (hash (list (values 1 (numV 10)) 
+                             (values 2 (numV 11)))))
+
 (define (lookup-store [loc : Location]) : (Computation Value)
   (lambda ([store : Store])
     (type-case (optionof Value) (hash-ref store loc)
       [none () (error 'lookup-store "not in store")]
       [some (val) (v*s val store)])))
+
+(test (v*s-v ((lookup-store 1) test-sto))
+      (v*s-v (v*s (numV 10) empty-store)))
+(test/exn ((lookup-store 1000) test-sto)
+          "not in store")
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -408,9 +418,7 @@
 (test ((interp (binopC '/ (numC 3) (numC 3)) empty-env) empty-store)
       (v*s (numV 1) empty-store))
 
-(define a-env (hash (list (values 'x 1) (values 'y 2))))
-(define a-sto (hash (list (values 1 (numV 10)) (values 2 (numV 11)))))
-(test (v*s-v ((interp (idC 'x) a-env) a-sto))
+(test (v*s-v ((interp (idC 'x) test-env) test-sto))
       (v*s-v (v*s (numV 10) empty-store)))
 ; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 ; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
