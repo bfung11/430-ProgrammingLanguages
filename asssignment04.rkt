@@ -177,8 +177,7 @@
                                 (parse (second a-list)) 
                                 (parse (third a-list)))]
                 [else (appC (parse first-elem)
-                            (map parse (rest a-list)))]))]
-      [else (error 'parse "not a valid expression")]))
+                            (map parse (rest a-list)))]))]))
 
 ; taken from Assignment 3 by John Clements
 ; base types test cases
@@ -254,8 +253,6 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
-(test/exn (parse '{akldsjfalksdfja})
-          "not a valid expression")
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
 ; taken from 
