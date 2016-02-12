@@ -382,6 +382,8 @@
                              (values 18 (numV 202))
                              (values 19 (numV 203)))))
 
+; given a list of elements an a store
+; add all the elements to the store and return it
 (define (add-to-store [elements : (listof Value)]
                       [store : Store]) : Store
   (cond 
@@ -398,6 +400,9 @@
                   (values 1 (numV 10))
                   (values 2 (numV 11)))))
 
+; given a location in the store and a new value
+; update the value in the location and
+; return null
 (define (set-in-store! [loc : Location]
                        [new-value : Value]) : (Computation Value)
   (lambda ([store : Store])
@@ -406,6 +411,8 @@
 (test (v*s-v ((set-in-store! 14 (numV 500)) test-sto))
       (v*s-v (v*s (nullV) empty-store)))
 
+; given a location in the store
+; return a value
 (define (lookup-store [loc : Location]) : (Computation Value)
   (lambda ([store : Store])
     (type-case (optionof Value) (hash-ref store loc)
@@ -425,6 +432,8 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; given an location of an array, the offset and the environment
+; returns a value
 (define (get-array-index [id : Value]
                          [index : Value]
                          [env : Environment]) : (Computation Value)
@@ -433,11 +442,11 @@
       [arrayV (arr-start len)
         (do 
           (type-case Value index
-            [numV (shift) 
+            [numV (offset) 
               (cond 
-                [(and (>= shift 0)
-                      (< shift len))
-                  (lift (do-binop '+ (numV arr-start) (numV shift)))]
+                [(and (>= offset 0)
+                      (< offset len))
+                  (lift (do-binop '+ (numV arr-start) (numV offset)))]
                 [else (error 'get-array-index "index out of bounds")])]
             [else (error 'get-array-index "expected index")]))]
       [else (error 'get-array-index "expected array")])))
@@ -451,6 +460,8 @@
 (test/exn (get-array-index (arrayV 1 3) (numV 100) test-env)
           "index out of bounds")
 
+; given a location in the store, the new value and the environment
+; return a value
 (define (set-array [location : Value]
                    [new-value : Value]
                    [env : Environment]) : (Computation Value)
@@ -477,15 +488,19 @@
       ; array
       [array-refC (id index) 
         (do [arr-start <- (interp id env)]
-            [shift <- (interp index env)]
-            [loc <- (get-array-index arr-start shift env)]
+            [offset <- (interp index env)]
+            [loc <- (get-array-index arr-start offset env)]
             (lookup-store (numV-num loc)))]
       [array-setC (id index val)
         (do [arr-start <- (interp id env)]
-            [shift <- (interp index env)]
-            [arr-index <- (get-array-index arr-start shift env)]
+            [offset <- (interp index env)]
+            [arr-index <- (get-array-index arr-start offset env)]
             [new-val <- (interp val env)]
             (set-array arr-index new-val env))]
+      [setC (id val) 
+        (do [new-val <- (interp val env)]
+            [loc <- (interp (idC id) env)]
+            (set-in-store! (numV-num loc) new-val))]
       [ifC (c t f) 
         (do [cval <- (interp c env)]
             [tval <- (interp t env)]
@@ -546,6 +561,10 @@
       (v*s-v (v*s (numV 150) test-sto)))
 (test (v*s-v ((interp (array-setC (idC 'd) (numC 1) (numC 188)) test-env) test-sto))
       (v*s-v (v*s (nullV) test-sto)))
+(test (v*s-v ((interp (setC 'x (numC 501)) test-env) test-sto))
+      (v*s-v (v*s (nullV) empty-store)))
+(test/exn ((interp (setC 'p (numC 501)) test-env) test-sto)
+          "not in environment")
 ; (test (v*s-v ((interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env) test-sto))
 ;       (v*s-v (v*s (arrayV 3 3) empty-store)))
 (test/exn (interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env)
