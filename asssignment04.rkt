@@ -359,7 +359,7 @@
         (do [lval <- (interp l env)]
             [rval <- (interp r env)]
             (lift (binopC-to-NumV s lval rval)))]
-      ; [idC (id) (lookup-store )]
+      [idC (id) (lookup-store (some-v (hash-ref env id)))]
       ; new-array
       ; array
       ; ref
@@ -402,10 +402,11 @@
       (v*s (numV 9) empty-store))
 (test ((interp (binopC '/ (numC 3) (numC 3)) empty-env) empty-store)
       (v*s (numV 1) empty-store))
-; (test (interp (idC 'x)
-;               (list (binding 'x (numV 3))
-;                     (binding 'y (numV 4))))
-;       (numV 3))
+
+(define a-env (hash (list (values 'x 1) (values 'y 2))))
+(define a-sto (hash (list (values 1 (numV 10)) (values 2 (numV 11)))))
+(test (v*s-v ((interp (idC 'x) a-env) a-sto))
+      (v*s-v (v*s (numV 10) empty-store)))
 ; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 ; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
 ; (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
@@ -438,27 +439,6 @@
 (test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
                  "#<procedure>")
 (test (serialize (nullV)) "null")
-
-; consumes an expression and parses and interprets it
-; taken from Assignment 3 by John Clements
-; (define (top-eval [s : s-expression]) : string
-;   (serialize (interp (parse s) empty-env)))
-
-; ; taken from Assignment 3 by John Clements
-; (test (top-eval '{+ 12 4}) "16")
-; (test (top-eval '{* 12 4}) "48")
-; (test (top-eval '{- 12 4}) "8")
-; (test (top-eval '{/ 12 4}) "3")
-; (test (top-eval `true) "true")
-; (test (top-eval `false) "false")
-; (test (top-eval '{if true 3 4}) "3")
-; (test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
-; (test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
-; (test (top-eval '{with {z = {+ 9 14}}
-;                        {y = 98}
-;                        {+ z y}})
-;       "121")
-
 
 
 
