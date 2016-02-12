@@ -407,9 +407,9 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (deref-array [id : Value]
-                     [index : Value]
-                     [env : Environment]) : (Computation Value)
+(define (get-array-index [id : Value]
+                         [index : Value]
+                         [env : Environment]) : (Computation Value)
   (do 
     (type-case Value id
       [arrayV (arr-start len)
@@ -419,37 +419,26 @@
               (cond 
                 [(and (>= shift 0)
                       (< shift len))
-                  (lookup-store (+ arr-start shift))]
-                [else (error 'deref-array "index out of bounds")])]
-            [else (error 'deref-array "expected index")]))]
-      [else (error 'deref-array "expected array")])))
+                  (lift (do-binop '+ (numV arr-start) (numV shift)))]
+                [else (error 'get-array-index "index out of bounds")])]
+            [else (error 'get-array-index "expected index")]))]
+      [else (error 'get-array-index "expected array")])))
 
-; (define (deref-array [id : OWQQ4]
-;                      [index : OWQQ4]
-;                      [env : Environment]) : (Computation Value)
-;   (do [arr-loc <- (interp id env)]
-;     (type-case Value arr-loc
-;       [arrayV (arr-start len)
-;         (do [indexval <- (interp index env)]
-;           (type-case Value indexval
-;             [numV (shift) 
-;               (cond 
-;                 [(and (>= shift 0)
-;                       (< shift len))
-;                   (lookup-store (+ arr-start shift))]
-;                 [else (error 'deref-array "index out of bounds")])]
-;             [else (error 'deref-array "expected index")]))]
-;       [else (error 'deref-array "expected array")])))
-
-(test (v*s-v ((deref-array (arrayV 1 3) (numV 1) test-env) test-sto))
-      (v*s-v (v*s (numV 110) test-sto)))
-(test/exn (v*s-v ((deref-array (boolV #t) (numV 2) test-env) test-sto))
+(test (v*s-v ((get-array-index (arrayV 1 3) (numV 1) test-env) test-sto))
+      (v*s-v (v*s (numV 2) test-sto)))
+(test/exn (v*s-v ((get-array-index (boolV #t) (numV 2) test-env) test-sto))
           "expected array")
-(test/exn (v*s-v ((deref-array (arrayV 1 3) (boolV #f) test-env) test-sto))
+(test/exn (v*s-v ((get-array-index (arrayV 1 3) (boolV #f) test-env) test-sto))
           "expected index")
-(test/exn (v*s-v ((deref-array (arrayV 1 3) (numV 100) test-env) test-sto))
+(test/exn (v*s-v ((get-array-index (arrayV 1 3) (numV 100) test-env) test-sto))
           "index out of bounds")
 
+; (define (set-array [id : Value]
+;                    [index : Value]
+;                    [new-value : Value]
+;                    [env : Environment]) : (Computation Value)
+;   (type-case (get-array-index id index env)
+; )
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -473,11 +462,15 @@
       [array-refC (id index) 
         (do [arr-start <- (interp id env)]
             [shift <- (interp index env)]
-            [loc <- (deref-array arr-start shift env)]
+            [loc <- (get-array-index arr-start shift env)]
           (type-case Value loc
-            [numV (n) (lift (numV n))]
+            [numV (n) (lookup-store n)]
             [else (error 'interp "not a location")]))]
-      ; <>
+      ; [array-setC (id index val)
+      ;   (do [arr-start <- (interp id env)]
+      ;       [shift <- (interp index env)]
+      ;       [new-val <- (interp val env)]
+      ;       ())]
       [ifC (c t f) 
         (do [cval <- (interp c env)]
             [tval <- (interp t env)]
