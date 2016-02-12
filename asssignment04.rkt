@@ -481,7 +481,7 @@
         (do [arr-start <- (interp id env)]
             [shift <- (interp index env)]
             [loc <- (get-array-index arr-start shift env)]
-            (lookup-store n))]
+            (lookup-store (numV-num loc)))]
       [array-setC (id index val)
         (do [arr-start <- (interp id env)]
             [shift <- (interp index env)]
