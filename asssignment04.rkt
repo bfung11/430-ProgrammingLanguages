@@ -186,6 +186,8 @@
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
 (test (parse `x) (idC 'x))
+(test/exn (parse '{+ if with})
+          "not a valid symbol")
 
 ; array test cases
 (test (parse '{array})
@@ -248,7 +250,6 @@
 
 (test/exn (parse '{+ + +}) "not a valid symbol")
 ; (parse '{func {x x} 3}) (lamC ('x 'x))
-; (parse '{+ if with})
 ; (parse 'func (x x) 3')
 ; expected exception on test expression: '(parse '(+ if with))
 ; Saving submission with errors.
