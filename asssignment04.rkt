@@ -280,10 +280,12 @@
 
 ; consumes an operator a left and right value for a binopC and returns the
 ; resulting value
-(define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
-  (numV ((some-v (hash-ref binop-table op)) 
-         (numV-num left)
-         (numV-num right))))
+(define (binopC-to-NumV [op : symbol] [left : 'a] [right : 'a]) : Value
+    (cond [(and (numV? left) (numV? right))
+           (numV ((some-v (hash-ref binop-table op))
+                 (numV-num left)
+                 (numV-num right)))]
+          [else (numV 3)]))
 
 (test (binopC-to-NumV '+ (numV 4) (numV 4)) (numV 8))
 (test (binopC-to-NumV '* (numV 4) (numV 4)) (numV 16))
@@ -319,6 +321,10 @@
 ; Monad Definitions
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;
+
+; when returning elements, just think of it as 
+; using the do to return the type as normal
+; and add a computation to it, so it knows what to do when a store is added
 
 ; give me a store and I will complete the rest
 (define-type-alias (Computation 'a) (Store -> Result))
@@ -369,6 +375,23 @@
                   (values 1 (numV 10))
                   (values 2 (numV 11)))))
 
+(define (deref-array [id : OWQQ4]
+                     [index : OWQQ4]
+                     [env : Environment]) : (Computation Value)
+  (do [idval <- (interp id env)]
+    (type-case Value idval
+      [arrayV (loc len)
+        (do [indexval <- (interp index env)]
+          (type-case Value indexval
+            [numV (n) 
+              (cond 
+                [(and (<= n 0)
+                      (< n len))
+                  (lift (binopC-to-NumV '+ n loc))]
+                [else (error 'deref-array "index out of bounds")])]
+            [else (error 'deref-array "expected index")]))]
+      [else (error 'deref-array "expected an array")])))
+
 (define (lookup-store [loc : Location]) : (Computation Value)
   (lambda ([store : Store])
     (type-case (optionof Value) (hash-ref store loc)
@@ -399,8 +422,12 @@
       [arrayC (elems) 
         (interp (first elems) env)]
       ; array
-      ; ref
-      ; <-
+      [array-refC (id index) 
+        (do [indexval <- (deref-array id index env)]
+          (type-case Value indexval
+            [numV (n) (lookup-store n)]
+            [else (error 'interp "not an index")]))]
+      ; <>
       [ifC (c t f) 
         (do [cval <- (interp c env)]
             [tval <- (interp t env)]
