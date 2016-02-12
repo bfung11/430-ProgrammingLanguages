@@ -127,11 +127,9 @@
              (error 'parse "array must contain at least one cell")]
             [else (arrayC (map parse (create-array num-cells 
                                                    (third a-list))))]))]
-      [(s-exp-match? '{array ANY ...} s)
+      [(s-exp-match? '{array ANY ANY ...} s)
         (local [(define a-list (s-exp->list s))]
-          (cond 
-            [(= (length a-list) empty-array) (arrayC empty)]
-            [else (arrayC (map parse (rest a-list)))]))]
+          (arrayC (map parse (rest a-list))))]
       [(s-exp-match? '{ref ANY[ANY]} s)
         (local [(define a-list (s-exp->list s))]
           (array-refC (parse (second a-list)) 
@@ -182,6 +180,8 @@
                 [else (appC (parse first-elem)
                             (map parse (rest a-list)))]))]))
 
+(equal? (length (s-exp->list '{array})) 1)
+
 ; taken from Assignment 3 by John Clements
 ; base types test cases
 (test (parse '3) (numC 3))
@@ -192,8 +192,8 @@
           "not a valid symbol")
 
 ; array test cases
-(test (parse '{array})
-      (arrayC empty))
+(test/exn (parse '{array})
+          "not a valid symbol")
 (test (parse '{array 3 false {+ 3 2} x})
       (arrayC (list (numC 3) 
                     (boolC #f) 
