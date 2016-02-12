@@ -420,6 +420,9 @@
 
 (test (v*s-v ((interp (idC 'x) test-env) test-sto))
       (v*s-v (v*s (numV 10) empty-store)))
+(test/exn (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env)
+          "not implemented")
+
 ; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 ; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
 ; (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
