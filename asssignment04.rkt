@@ -364,8 +364,8 @@
                              (values 2 (numV 110))
                              (values 3 (numV 120))
                              (values 4 (arrayV 5 4))
-                             (values 5 (numV 14))
-                             (values 6 (numV 5))
+                             (values 5 (numV 140))
+                             (values 6 (numV 150))
                              (values 7 (boolV #t))
                              (values 8 (boolV #f))
                              (values 9 (numV 100))
@@ -391,13 +391,65 @@
 (define (lookup-store [loc : Location]) : (Computation Value)
   (lambda ([store : Store])
     (type-case (optionof Value) (hash-ref store loc)
-      [none () (error 'lookup-store "not in store")]
+      [none () (error 'lookup-store (to-string loc))]
       [some (val) (v*s val store)])))
 
+(test (v*s-v ((lookup-store 0) test-sto))
+      (v*s-v (v*s (arrayV 1 3) empty-store)))
 (test (v*s-v ((lookup-store 1) test-sto))
       (v*s-v (v*s (numV 100) empty-store)))
-(test/exn ((lookup-store 1000) test-sto)
-          "not in store")
+; (test/exn ((lookup-store 1000) test-sto)
+;           "not in store")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Interpreter Helper Functions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (deref-array [id : Value]
+                     [index : Value]
+                     [env : Environment]) : (Computation Value)
+  (do 
+    (type-case Value id
+      [arrayV (arr-start len)
+        (do 
+          (type-case Value index
+            [numV (shift) 
+              (cond 
+                [(and (>= shift 0)
+                      (< shift len))
+                  (lookup-store (+ arr-start shift))]
+                [else (error 'deref-array "index out of bounds")])]
+            [else (error 'deref-array "expected index")]))]
+      [else (error 'deref-array "expected array")])))
+
+; (define (deref-array [id : OWQQ4]
+;                      [index : OWQQ4]
+;                      [env : Environment]) : (Computation Value)
+;   (do [arr-loc <- (interp id env)]
+;     (type-case Value arr-loc
+;       [arrayV (arr-start len)
+;         (do [indexval <- (interp index env)]
+;           (type-case Value indexval
+;             [numV (shift) 
+;               (cond 
+;                 [(and (>= shift 0)
+;                       (< shift len))
+;                   (lookup-store (+ arr-start shift))]
+;                 [else (error 'deref-array "index out of bounds")])]
+;             [else (error 'deref-array "expected index")]))]
+;       [else (error 'deref-array "expected array")])))
+
+(test (v*s-v ((deref-array (arrayV 1 3) (numV 1) test-env) test-sto))
+      (v*s-v (v*s (numV 110) test-sto)))
+(test/exn (v*s-v ((deref-array (boolV #t) (numV 2) test-env) test-sto))
+          "expected array")
+(test/exn (v*s-v ((deref-array (arrayV 1 3) (boolV #f) test-env) test-sto))
+          "expected index")
+(test/exn (v*s-v ((deref-array (arrayV 1 3) (numV 100) test-env) test-sto))
+          "index out of bounds")
+
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -419,9 +471,11 @@
         (interp (first elems) env)]
       ; array
       [array-refC (id index) 
-        (do [loc <- (deref-array id index env)]
+        (do [arr-start <- (interp id env)]
+            [shift <- (interp index env)]
+            [loc <- (deref-array arr-start shift env)]
           (type-case Value loc
-            [numV (n) (lookup-store n)]
+            [numV (n) (lift (numV n))]
             [else (error 'interp "not a location")]))]
       ; <>
       [ifC (c t f) 
@@ -466,6 +520,8 @@
       (v*s (numV 1) empty-store))
 (test (v*s-v ((interp (idC 'x) test-env) test-sto))
       (v*s-v (v*s (numV 200) empty-store)))
+(test (v*s-v ((interp (idC 'a) test-env) test-sto))
+      (v*s-v (v*s (arrayV 1 3) empty-store)))
 (test/exn (interp (idC 'z) test-env)
           "not in environment")
 (test (v*s-v ((interp (ifC (boolC #t) (numC 4) (numC 5)) test-env) test-sto))
@@ -478,6 +534,8 @@
       (v*s-v (v*s (cloV (list 'x 'y) (numC 3) test-env) empty-store)))
 (test (v*s-v ((interp (array-refC (idC 'a) (numC 1)) test-env) test-sto))
       (v*s-v (v*s (numV 110) test-sto)))
+(test (v*s-v ((interp (array-refC (idC 'b) (numC 1)) test-env) test-sto))
+      (v*s-v (v*s (numV 150) test-sto)))
 ; (test (v*s-v ((interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env) test-sto))
 ;       (v*s-v (v*s (arrayV 3 3) empty-store)))
 
@@ -491,44 +549,6 @@
 ;       (v*s-v (v*s (numV 121) empty-store)))
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; Interpreter Helper Functions
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define (get-store-location [id : symbol]
-                            [env : Environment]) : Location
-  (type-case (optionof Location) (hash-ref env id)
-    [none () (error 'interp "not in environment")]
-    [some (loc) loc]))
-
-(define (deref-array [id : OWQQ4]
-                     [index : OWQQ4]
-                     [env : Environment]) : (Computation Value)
-  (do [arr-loc <- (interp id env)]
-    (type-case Value arr-loc
-      [arrayV (arr-start len)
-        (do [indexval <- (interp index env)]
-          (type-case Value indexval
-            [numV (shift) 
-              (cond 
-                [(and (>= shift 0)
-                      (< shift len))
-                  (lookup-store (+ arr-start shift))]
-                [else (error 'deref-array "index out of bounds")])]
-            [else (error 'deref-array "expected index")]))]
-      [else (error 'deref-array "expected array")])))
-
-(test (v*s-v ((deref-array (idC 'a) (numC 1) test-env) test-sto))
-      (v*s-v (v*s (numV 110) test-sto)))
-(test/exn (v*s-v ((deref-array (boolC #t) (numC 2) test-env) test-sto))
-          "expected array")
-(test/exn (v*s-v ((deref-array (idC 'a) (boolC #f) test-env) test-sto))
-          "expected index")
-(test/exn (v*s-v ((deref-array (idC 'a) (numC 100) test-env) test-sto))
-          "index out of bounds")
 
 ; Consumes a value and produces a string
 ; taken from Assignment 3 by John Clements
