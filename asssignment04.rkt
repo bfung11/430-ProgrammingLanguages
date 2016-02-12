@@ -444,19 +444,17 @@
 
 (test (v*s-v ((get-array-index (arrayV 1 3) (numV 1) test-env) test-sto))
       (v*s-v (v*s (numV 2) test-sto)))
-(test/exn (v*s-v ((get-array-index (boolV #t) (numV 2) test-env) test-sto))
+(test/exn (get-array-index (boolV #t) (numV 2) test-env)
           "expected array")
-(test/exn (v*s-v ((get-array-index (arrayV 1 3) (boolV #f) test-env) test-sto))
+(test/exn (get-array-index (arrayV 1 3) (boolV #f) test-env)
           "expected index")
-(test/exn (v*s-v ((get-array-index (arrayV 1 3) (numV 100) test-env) test-sto))
+(test/exn (get-array-index (arrayV 1 3) (numV 100) test-env)
           "index out of bounds")
 
 (define (set-array [location : Value]
                    [new-value : Value]
                    [env : Environment]) : (Computation Value)
-  (type-case Value location
-    [numV (v) (set-in-store! v new-value)]
-    [else (error 'set-array "not in hash map")]))
+  (set-in-store! (numV-num new-value) new-value))
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -474,8 +472,8 @@
         (type-case (optionof Location) (hash-ref env id)
             [none () (error 'interp "not in environment")]
             [some (loc) (lookup-store loc)])]
-      [arrayC (elems) 
-        (interp (first elems) env)]
+      ; [arrayC (elems) 
+      ;   (interp (first elems) env)]
       ; array
       [array-refC (id index) 
         (do [arr-start <- (interp id env)]
@@ -538,7 +536,7 @@
       (v*s-v (v*s (numV 4) empty-store)))
 (test (v*s-v ((interp (ifC (boolC #f) (numC 4) (numC 5)) test-env) test-sto))
       (v*s-v (v*s (numV 5) empty-store)))
-(test/exn (v*s-v ((interp (ifC (numC 5) (numC 4) (numC 5)) test-env) test-sto))
+(test/exn ((interp (ifC (numC 5) (numC 4) (numC 5)) test-env) test-sto)
           "expected boolean")
 (test (v*s-v ((interp (lamC (list 'x 'y) (numC 3)) test-env) test-sto))
       (v*s-v (v*s (cloV (list 'x 'y) (numC 3) test-env) empty-store)))
@@ -550,6 +548,8 @@
       (v*s-v (v*s (nullV) test-sto)))
 ; (test (v*s-v ((interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env) test-sto))
 ;       (v*s-v (v*s (arrayV 3 3) empty-store)))
+(test/exn (interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env)
+          "not implemented")
 
 ; (test (v*s-v ((interp (array-refC (idC 'a) (numC 3)) test-env) test-sto))
 ;       (v*s-v (v*s (numV 12) empty-store)))
