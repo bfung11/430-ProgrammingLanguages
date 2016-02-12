@@ -51,15 +51,9 @@
 ; Environment Definitions
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-type-alias Location number)
-
-(define-type Binding
-  [binding (name : symbol) (val : Location)])
  
-(define-type-alias Environment (listof Binding))
-(define empty-env empty)
-(define extend-env cons)
+(define-type-alias Environment (hashof symbol Location))
+(define empty-env (hash empty))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -67,23 +61,13 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-type Sbind
-  [sbind (location : Location) (value : Value)])
+(define-type-alias Location number)
 
-(define-type-alias Store (listof Sbind))
-(define empty-store empty)
-(define override-store cons)
+(define-type-alias Store (hashof Location Value))
+(define empty-store (hash empty))
 
 (define-type Result
   [v*s (v : Value) (s : Store)])
-
-;;;;;;;;;;;;;;;;;;;;;;;
-;
-; Monad Definitions
-;
-;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-type-alias (Computation 'a) (Store -> Result))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;
@@ -264,12 +248,6 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
-;;;;;;;;;;;;;;;;;;;;
-;
-; Interpreter
-;
-;;;;;;;;;;;;;;;;;;;;
-
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
 ; taken from 
@@ -329,7 +307,15 @@
 ; (Value -> ((listof Sbind) -> Result))
 ; debugging - expected v. actual
 
-; (Value -> (Store -> Value*Store))
+;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Monad Definitions
+;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+; give me a store and I will complete the rest
+(define-type-alias (Computation 'a) (Store -> Result))
+
 (define (lift [v : 'a])  : (Computation 'a)
   (lambda ([sto : Store]) (v*s v sto)))
 
@@ -349,7 +335,17 @@
     [(_ rhs clause ...)
      #'(bind rhs (lambda (unused) (do clause ...)))]))
 
-; (define (lookup-store ))
+;;;;;;;;;;;;;;;;;;;;
+;
+; Interpreter
+;
+;;;;;;;;;;;;;;;;;;;;
+
+(define (lookup-store [loc : Location]) : (Computation Value)
+  (lambda ([store : Store])
+    (type-case (optionof Value) (hash-ref store loc)
+      [none () (error 'lookup-store "not in store")]
+      [some (val) (v*s val store)])))
 
 ; Interprets the given expression, using the list of funs to resolve 
 ; appClications.
@@ -363,7 +359,7 @@
         (do [lval <- (interp l env)]
             [rval <- (interp r env)]
             (lift (binopC-to-NumV s lval rval)))]
-      ; [idC (id) (lookup-env id env)]
+      ; [idC (id) (lookup-store )]
       ; new-array
       ; array
       ; ref
