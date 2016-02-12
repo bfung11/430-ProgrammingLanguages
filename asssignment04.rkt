@@ -376,16 +376,20 @@
         (do [lval <- (interp l env)]
             [rval <- (interp r env)]
             (lift (binopC-to-NumV s lval rval)))]
-      [idC (id) (lookup-store (some-v (hash-ref env id)))]
+      [idC (id) 
+        (type-case (optionof Location) (hash-ref env id)
+            [none() (error 'interp "not in environment")]
+            [some (loc) (lookup-store loc)])]
       ; new-array
       ; array
       ; ref
-      ; [ifC (c t f) (local [(define condition (interp c env))
-      ;                      (define then (interp t env))
-      ;                      (define els (interp f env))]
-      ;                (type-case Value condition
-      ;                  [boolV (b) (if b then els)]
-      ;                  [else (error 'interp "expected boolean")]))] 
+      [ifC (c t f) 
+        (do [cval <- (interp c env)]
+            [tval <- (interp t env)]
+            [fval <- (interp f env)]
+              (type-case Value cval
+                [boolV (b) (if b (interp t env) (interp f env))]
+                [else (error 'interp "expected boolean")]))]
       ; [lamC (params body) (lift (cloV params body env))]
       ; [appC (fn args) 
       ;   (type-case Value (interp fn env)
@@ -421,12 +425,17 @@
       (v*s (numV 1) empty-store))
 (test (v*s-v ((interp (idC 'x) test-env) test-sto))
       (v*s-v (v*s (numV 10) empty-store)))
+(test/exn ((interp (idC 'z) test-env) test-sto)
+          "not in environment")
+(test (v*s-v ((interp (ifC (boolC #t) (numC 4) (numC 5)) test-env) test-sto))
+      (v*s-v (v*s (numV 4) empty-store)))
+(test (v*s-v ((interp (ifC (boolC #f) (numC 4) (numC 5)) test-env) test-sto))
+      (v*s-v (v*s (numV 5) empty-store)))
 
 ; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 ; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
 ; (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
 ;           "expected boolean")
-; (test/exn (interp (idC 'x) empty-env) "unbound identifier")
 ; (test ((interp (lamC (list 'x 'y) (numC 3)) empty-env) empty-store)
       ; (v*s (cloV (list 'x 'y) (numC 3) (list)) empty-store))
 ; (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
@@ -435,7 +444,7 @@
 ;       (numV 121))
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
-(test/exn (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env)
+(test/exn (interp (appC (numC 3) empty) empty-env)
           "not implemented")
 
 ; Consumes a value and produces a string
