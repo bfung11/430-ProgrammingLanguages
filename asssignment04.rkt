@@ -36,6 +36,8 @@
   [cloV (params : (listof symbol))
         (body : OWQQ4)
         (env : Environment)]
+  [arrayV (location : Location)
+          (length : number)]
   [nullV])
 
 (define binop-table
@@ -417,11 +419,8 @@
       (v*s (numV 9) empty-store))
 (test ((interp (binopC '/ (numC 3) (numC 3)) empty-env) empty-store)
       (v*s (numV 1) empty-store))
-
 (test (v*s-v ((interp (idC 'x) test-env) test-sto))
       (v*s-v (v*s (numV 10) empty-store)))
-(test/exn (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env)
-          "not implemented")
 
 ; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 ; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
@@ -436,6 +435,8 @@
 ;       (numV 121))
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
+(test/exn (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env)
+          "not implemented")
 
 ; Consumes a value and produces a string
 ; taken from Assignment 3 by John Clements
@@ -447,6 +448,9 @@
         [(equal? b #t) "true"]
         [else "false"])]
     [cloV (p b e) "#<procedure>"]
+    [arrayV (loc len) 
+      (string-append (string-append "location " (to-string loc))
+                     (string-append "length " (to-string len)))]
     [nullV () "null"]))
 
 (test (serialize (numV 4)) "4")
