@@ -46,6 +46,9 @@
               (values '* *)
               (values '/ /))))
 
+; (define (is-equal? [left : 'a] [right : 'a]) : Value
+;   (equal? left right))
+
 (define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -180,7 +183,7 @@
                 [else (appC (parse first-elem)
                             (map parse (rest a-list)))]))]))
 
-(equal? (length (s-exp->list '{array})) 1)
+; (equal? (length (s-exp->list '{array})) 1)
 
 ; taken from Assignment 3 by John Clements
 ; base types test cases
@@ -280,17 +283,15 @@
 
 ; consumes an operator a left and right value for a binopC and returns the
 ; resulting value
-(define (binopC-to-NumV [op : symbol] [left : 'a] [right : 'a]) : Value
-    (cond [(and (numV? left) (numV? right))
-           (numV ((some-v (hash-ref binop-table op))
-                 (numV-num left)
-                 (numV-num right)))]
-          [else (numV 3)]))
+(define (do-binop [op : symbol] [left : Value] [right : Value]) : Value
+  (numV ((some-v (hash-ref binop-table op)) 
+         (numV-num left)
+         (numV-num right))))
 
-(test (binopC-to-NumV '+ (numV 4) (numV 4)) (numV 8))
-(test (binopC-to-NumV '* (numV 4) (numV 4)) (numV 16))
-(test (binopC-to-NumV '- (numV 4) (numV 4)) (numV 0))
-(test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
+(test (do-binop '+ (numV 4) (numV 4)) (numV 8))
+(test (do-binop '* (numV 4) (numV 4)) (numV 16))
+(test (do-binop '- (numV 4) (numV 4)) (numV 0))
+(test (do-binop '/ (numV 4) (numV 4)) (numV 1))
 
 ; interp before adding to env?
 ; function meant to add bindings to environment
@@ -387,7 +388,7 @@
               (cond 
                 [(and (<= n 0)
                       (< n len))
-                  (lift (binopC-to-NumV '+ n loc))]
+                  (lift (do-binop '+ (numV n) (numV loc)))]
                 [else (error 'deref-array "index out of bounds")])]
             [else (error 'deref-array "expected index")]))]
       [else (error 'deref-array "expected an array")])))
@@ -414,7 +415,7 @@
       [binopC (s l r) 
         (do [lval <- (interp l env)]
             [rval <- (interp r env)]
-            (lift (binopC-to-NumV s lval rval)))]
+            (lift (do-binop s lval rval)))]
       [idC (id) 
         (type-case (optionof Location) (hash-ref env id)
             [none () (error 'interp "not in environment")]
@@ -422,11 +423,11 @@
       [arrayC (elems) 
         (interp (first elems) env)]
       ; array
-      [array-refC (id index) 
-        (do [indexval <- (deref-array id index env)]
-          (type-case Value indexval
-            [numV (n) (lookup-store n)]
-            [else (error 'interp "not an index")]))]
+      ; [array-refC (id index) 
+      ;   (do [indexval <- (deref-array id index env)]
+      ;     (type-case Value indexval
+      ;       [numV (n) (lookup-store n)]
+      ;       [else (error 'interp "not an index")]))]
       ; <>
       [ifC (c t f) 
         (do [cval <- (interp c env)]
