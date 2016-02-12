@@ -92,6 +92,7 @@
   (cond [(= num 0) empty]
         [else (cons elem (create-array (- num 1) elem))]))
 
+; takes a symbol and checks whether or not the id can be used
 (define (is-id-legal? [sym : symbol]) : boolean
   (and (none? (hash-ref binop-table sym))
        (not (member sym id-keywords))))
@@ -124,7 +125,7 @@
           (cond 
             [(= (length a-list) empty-array) (arrayC empty)]
             [else (arrayC (map parse (rest a-list)))]))]
-      [(s-exp-match? '{ref SYMBOL [NUMBER]} s)
+      [(s-exp-match? '{ref SYMBOL [ANY]} s)
         (local [(define a-list (s-exp->list s))]
           (array-refC (parse (second a-list)) 
                       (parse (first (s-exp->list (third a-list))))))]
@@ -161,9 +162,6 @@
                             (map parse (rest a-list)))]))]
       [else (error 'parse "not a legal expression")]))
 
-(define a-list (s-exp->list '{ref p [{+ 3 2}]}))
-(first (s-exp->list (third a-list)))
-
 ; taken from Assignment 3 by John Clements
 ; question how to parse new forms like array and set?
 (test (parse '3) (numC 3))
@@ -186,8 +184,8 @@
 ; comes it as a symbol rather than an s-exp
 (test (parse '{ref p [x]})
       (array-refC (idC 'p) (idC 'x)))
-; (test (parse '{ref p [{+ 3 2}]})
-;       (array-refC (idC 'p) (binopC '+ (numC 3) (numC 2))))
+(test (parse '{ref p [{+ 3 2}]})
+      (array-refC (idC 'p) (binopC '+ (numC 3) (numC 2))))
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
 (test (parse '{func {} {+ 1 2}}) 
       (lamC empty (binopC '+ (numC 1) (numC 2))))
