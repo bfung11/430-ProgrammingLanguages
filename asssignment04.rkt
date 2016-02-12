@@ -82,6 +82,10 @@
   (cond [(= num 0) empty]
         [else (cons elem (create-array (- num 1) elem))]))
 
+(test (create-array 0 200) empty)
+(test (create-array 4 1)
+      (list 1 1 1 1))
+
 ; takes a symbol and checks whether or not the id can be used
 (define (is-id-legal? [sym : symbol]) : boolean
   (and (none? (hash-ref binop-table sym))
@@ -117,7 +121,7 @@
                 (define num-cells (s-exp->number (second a-list)))]
           (cond 
             [(< num-cells 1) 
-             (error 'parse "cannot create array with less one cell")]
+             (error 'parse "array must contain at least one cell")]
             [else (arrayC (map parse (create-array num-cells 
                                                    (third a-list))))]))]
       [(s-exp-match? '{array ANY ...} s)
@@ -174,7 +178,7 @@
                                 (parse (third a-list)))]
                 [else (appC (parse first-elem)
                             (map parse (rest a-list)))]))]
-      [else (error 'parse "not a legal expression")]))
+      [else (error 'parse "not a valid expression")]))
 
 ; taken from Assignment 3 by John Clements
 ; base types test cases
@@ -197,6 +201,8 @@
       (arrayC (list (boolC #t)
                     (boolC #t)
                     (boolC #t))))
+(test/exn (parse '{new-array 0 200})
+          "array must contain at least one cell")
 (test (parse '{ref p [3]})
       (array-refC (idC 'p) (numC 3)))
 (test (parse '{ref p [x]})
@@ -248,6 +254,8 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
+(test/exn (parse '{akldsjfalksdfja})
+          "not a valid expression")
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
 ; taken from 
