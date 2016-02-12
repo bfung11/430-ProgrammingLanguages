@@ -378,7 +378,7 @@
             (lift (binopC-to-NumV s lval rval)))]
       [idC (id) 
         (type-case (optionof Location) (hash-ref env id)
-            [none() (error 'interp "not in environment")]
+            [none () (error 'interp "not in environment")]
             [some (loc) (lookup-store loc)])]
       ; new-array
       ; array
@@ -425,12 +425,14 @@
       (v*s (numV 1) empty-store))
 (test (v*s-v ((interp (idC 'x) test-env) test-sto))
       (v*s-v (v*s (numV 10) empty-store)))
-(test/exn ((interp (idC 'z) test-env) test-sto)
+(test/exn (interp (idC 'z) test-env)
           "not in environment")
 (test (v*s-v ((interp (ifC (boolC #t) (numC 4) (numC 5)) test-env) test-sto))
       (v*s-v (v*s (numV 4) empty-store)))
 (test (v*s-v ((interp (ifC (boolC #f) (numC 4) (numC 5)) test-env) test-sto))
       (v*s-v (v*s (numV 5) empty-store)))
+(test/exn (v*s-v ((interp (ifC (numC 5) (numC 4) (numC 5)) test-env) test-sto))
+          "expected boolean")
 
 ; (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 ; (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
@@ -459,7 +461,7 @@
     [cloV (p b e) "#<procedure>"]
     [arrayV (loc len) 
       (string-append (string-append "location " (to-string loc))
-                     (string-append "length " (to-string len)))]
+                     (string-append " length " (to-string len)))]
     [nullV () "null"]))
 
 (test (serialize (numV 4)) "4")
@@ -467,6 +469,8 @@
 (test (serialize (boolV false)) "false")
 (test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
                  "#<procedure>")
+(test (serialize (arrayV 5 4))
+                 "location 5 length 4")
 (test (serialize (nullV)) "null")
 
 ; consumes an expression and parses and interprets it
