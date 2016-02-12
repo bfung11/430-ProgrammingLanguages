@@ -125,10 +125,13 @@
           (cond 
             [(= (length a-list) empty-array) (arrayC empty)]
             [else (arrayC (map parse (rest a-list)))]))]
-      [(s-exp-match? '{ref SYMBOL [ANY]} s)
+      [(s-exp-match? '{ref ANY[ANY]} s)
         (local [(define a-list (s-exp->list s))]
           (array-refC (parse (second a-list)) 
                       (parse (first (s-exp->list (third a-list))))))]
+      [(s-exp-match? '{ANY[ANY] <- ANY} s) (error 'parse "not implemented")]
+      [(s-exp-match? '{SYMBOL <- ANY} s) (error 'parse "not implemented")]
+      [(s-exp-match? '{begin ANY ANY ...} s) (error 'parse "not implemented")]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
