@@ -574,8 +574,11 @@
                       test-env)
               test-sto))
       (numV 100))
-; (test/exn (interp (appC (numC 3) empty) empty-env)
-;           "expected function")
+(test/exn ((interp (appC (numC 3) empty) empty-env) empty-store)
+          "expected function")
+(test/exn (interp (beginC (list (numC 9) (numC 4))) empty-env)
+          "not implemented")
+; expected exception on test expression: '(parse '(with (z = (func () 3)) (z = 9) (z)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;
