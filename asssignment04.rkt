@@ -143,8 +143,11 @@
                 (define sym-list (map s-exp->symbol (map first bind-as-list)))
                 (define fun-list (map third bind-as-list))
                 (define body (first (reverse (rest a-list))))]
-          (appC (lamC sym-list (parse body))
-                (map parse fun-list)))]
+            (cond 
+              [(is-symbol-unique? sym-list)
+                (appC (lamC sym-list (parse body))
+                      (map parse fun-list))]
+              [else (error 'parse "symbols not unique")]))]
       [(s-exp-match? '{func {SYMBOL ...} ANY} s)
         (local [(define a-list (s-exp->list s))
                 (define params 
@@ -237,6 +240,9 @@
                     {+ z y}})
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
+(test/exn (parse '{with {z = {func {} 3}} {z = 9} {z}})
+          "symbols not unique")
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -523,11 +529,11 @@
                 [rest-expr <- (interp-list (rest elems) env)]
                 (lift (cons first-expr rest-expr)))]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Test Cases without Mutation
+; Interp Test Cases
 ;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;
 
 (test ((interp (numC 3) empty-env) empty-store) 
       (v*s (numV 3) empty-store))
@@ -579,12 +585,10 @@
       (numV 100))
 (test/exn ((interp (appC (numC 3) empty) empty-env) empty-store)
           "expected function")
-
 (test (v*s-v ((interp (beginC (list (binopC '+ (numC 3) (numC 2)) (numC 9)))
                       test-env)
             test-sto))
       (numV 9))
-; expected exception on test expression: '(parse '(with (z = (func () 3)) (z = 9) (z)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;
