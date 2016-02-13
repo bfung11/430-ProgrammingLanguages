@@ -586,7 +586,14 @@ test-sto)
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
 
-; Consumes a value and produces a string
+;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Top Level Functions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; given a value
+; returns a string
 ; taken from Assignment 3 by John Clements
 (define (serialize [value : Value]) : string
   (type-case Value value
@@ -610,12 +617,13 @@ test-sto)
                  "location 5 length 4")
 (test (serialize (nullV)) "null")
 
-; consumes an expression and parses and interprets it
+; given an expression
+; returns a string after parsing and interpreting expression
 ; taken from Assignment 3 by John Clements
 (define (top-eval [s : s-expression]) : string
   (serialize (v*s-v ((interp (parse s) empty-env) empty-store))))
 
-; ; taken from Assignment 3 by John Clements
+; taken from Assignment 3 by John Clements
 (test (top-eval '{+ 12 4}) "16")
 (test (top-eval '{* 12 4}) "48")
 (test (top-eval '{- 12 4}) "8")
