@@ -72,8 +72,8 @@
 (define empty-store (hash empty))
 (define store-loc -1) ; start at -1 because after add, starts at index 0
 
-(define-type Result
-  [v*s (v : Value) (s : Store)])
+(define-type (Result 'a)
+  [v*s (v : 'a) (s : Store)])
 
 ;;;;;;;;;;;;;;;;;;;;
 ;
@@ -328,7 +328,7 @@
 ; and add a computation to it, so it knows what to do when a store is added
 
 ; give me a store and I will complete the rest
-(define-type-alias (Computation 'a) (Store -> Result))
+(define-type-alias (Computation 'a) (Store -> (Result 'a)))
 
 (define (lift [v : 'a])  : (Computation 'a)
   (lambda ([sto : Store]) (v*s v sto)))
@@ -336,7 +336,7 @@
 (define (bind [a : (Computation 'a)]
               [b : ('a -> (Computation 'b))]) : (Computation 'b)
   (lambda ([sto : Store])
-    (type-case Result (a sto)
+    (type-case (Result 'a) (a sto)
       [v*s (a-v a-s)
         ((b a-v) a-s)])))
 
@@ -382,23 +382,19 @@
                              (values 18 (numV 202))
                              (values 19 (numV 203)))))
 
-; given a list of elements an a store
-; add all the elements to the store and return it
-(define (add-to-store [elements : (listof Value)]
-                      [store : Store]) : Store
-  (cond 
-    [(empty? elements) store]
-    [else (begin (set! store-loc (+ 1 store-loc))
-                 (add-to-store (rest elements)
-                               (hash-set store
-                                         store-loc
-                                         (first elements))))]))
+; given a list of elements and a store
+; add all the elements to the store
+(define (add-array-to-store [elements : (listof Value)]) : (Computation Value)
+    (cond 
+      [(empty? elements) (lift (nullV))]
+      [else (begin (add-to-store (first elements))
+                   (add-array-to-store (rest elements)))]))
 
-(test (add-to-store empty empty-store) empty-store)
-(test (add-to-store (list (numV 9) (numV 10) (numV 11)) empty-store)
-      (hash (list (values 0 (numV 9))
-                  (values 1 (numV 10))
-                  (values 2 (numV 11)))))
+; given an element
+; add it to the store
+(define (add-to-store [element : Value]) : (Computation Value)
+  (begin (set! store-loc (+ 1 store-loc))
+         (set-in-store! store-loc element)))
 
 ; given a location in the store and a new value
 ; update the value in the location and
@@ -408,6 +404,12 @@
   (lambda ([store : Store])
     (v*s (begin (hash-set store loc new-value) (nullV)) store)))
 
+(test (v*s-v ((add-array-to-store empty) empty-store))
+      (v*s-v (v*s (nullV) empty-store)))
+(test (v*s-v ((add-array-to-store (list (numV 9) (numV 10) (numV 11))) empty-store))
+      (v*s-v (v*s (nullV) empty-store)))
+(test (v*s-v ((add-to-store (numV 3)) empty-store))
+      (v*s-v (v*s (nullV) empty-store)))
 (test (v*s-v ((set-in-store! 14 (numV 500)) test-sto))
       (v*s-v (v*s (nullV) empty-store)))
 
@@ -483,9 +485,13 @@
         (type-case (optionof Location) (hash-ref env id)
             [none () (error 'interp "not in environment")]
             [some (loc) (lookup-store loc)])]
-      ; [arrayC (elems) 
-      ;   (interp (first elems) env)]
-      ; array
+      [arrayC (elems) 
+        (local [(define loc (+ 1 store-loc))
+                (define arr (arrayV loc (length elems)))]
+          (do [elem-list <- (interp-listof-OWQQ elems env)]
+              (begin (add-to-store arr)
+                     (add-array-to-store elem-list)
+                     (lift arr))))]
       [array-refC (id index) 
         (do [arr-start <- (interp id env)]
             [offset <- (interp index env)]
@@ -518,6 +524,14 @@
       ;         (interp body new-env))]
       ;     [else (error 'interp "expected function")])]
       [else (error 'interp "not implemented")]))
+
+(define (interp-listof-OWQQ [elems : (listof OWQQ4)]
+                            [env : Environment])
+    (cond
+      [(empty? elems) (lift empty)]
+      [else (do [first-expr <- (interp (first elems) env)]
+                [rest-expr <- (interp-listof-OWQQ (rest elems) env)]
+                (lift (cons first-expr rest-expr)))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -555,6 +569,8 @@
           "expected boolean")
 (test (v*s-v ((interp (lamC (list 'x 'y) (numC 3)) test-env) test-sto))
       (v*s-v (v*s (cloV (list 'x 'y) (numC 3) test-env) empty-store)))
+(test (v*s-v ((interp (arrayC (list (numC 9) (idC 'x) (boolC #t))) test-env) test-sto))
+      (v*s-v (v*s (arrayV 8 3) empty-store)))
 (test (v*s-v ((interp (array-refC (idC 'a) (numC 1)) test-env) test-sto))
       (v*s-v (v*s (numV 110) test-sto)))
 (test (v*s-v ((interp (array-refC (idC 'b) (numC 1)) test-env) test-sto))
@@ -565,14 +581,7 @@
       (v*s-v (v*s (nullV) empty-store)))
 (test/exn ((interp (setC 'p (numC 501)) test-env) test-sto)
           "not in environment")
-; (test (v*s-v ((interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env) test-sto))
-;       (v*s-v (v*s (arrayV 3 3) empty-store)))
-(test/exn (interp (arrayC (list (numC 1) (numC 2) (numC 3))) test-env)
-          "not implemented")
 
-; (test (v*s-v ((interp (array-refC (idC 'a) (numC 3)) test-env) test-sto))
-;       (v*s-v (v*s (numV 12) empty-store)))
-; (test )
 ; (test ((interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
 ;                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
 ;               empty-env)
