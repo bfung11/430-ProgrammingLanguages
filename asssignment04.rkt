@@ -389,33 +389,23 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; (define (add-to-env [params : (listof symbol)] 
-;                     [args : (listof Value)]
-;                     [env : Environment]) : Environment
-;   (cond 
-;     [(and (empty? params) (empty? args)) (lift env)]
-;     [else (do [loc <- (add-to-store (first args))]
-;               [restenv <- (add-to-env (rest params) (rest args) env)]
-;               (lift (hash-set restenv (first params) (first args))))]))
-
 ; given a list of symbols, a list of Value, and an environment
 ; return the new environment
+; study notes flip lift and new-env
 (define (add-to-env [params : (listof symbol)] 
                     [args : (listof Value)]
                     [env : Environment]) : (Computation Environment)
   (cond
     [(and (empty? params) (empty? args)) (lift env)]
     [else (do [loc <- (add-to-store (first args))]
-              [new-env <- (lift (hash-set env (first params) (numV-num loc)))]
-              (add-to-env (rest params) (rest args) new-env))]))
+              [new-env <- (add-to-env (rest params) (rest args) env)]
+              (lift (hash-set env (first params) (numV-num loc))))]))
 
 (test (v*s-v ((add-to-env (list 'x 'y 'z)
-            (list (numV 3) (numV 5) (numV 7))
-            empty-env) empty-store))
-      (v*s-v (v*s (hash (list (values 'x 4)
-                              (values 'y 5)
-                              (values 'z 6)))
-                  empty-store)))
+                          (list (numV 3) (numV 5) (numV 7))
+                          empty-env) 
+              empty-store))
+      (hash (list (values 'x 4))))
 
 ; given an operator and two OWQQ expressions
 ; returns the value after applying the operator to them
@@ -464,8 +454,8 @@
                    [env : Environment]) : (Computation Value)
   (set-in-store! (numV-num new-value) new-value))
 
-; Interprets the given expression, using the list of funs to resolve 
-; appClications.
+; given and expression
+; returns the interpreted value 
 ; taken from Assignment 3 by John Clements
 (define (interp [expr : OWQQ4] 
                 [env : Environment]) : (Computation Value)
@@ -578,11 +568,11 @@
       (v*s-v (v*s (numV 200) empty-store)))
 (test/exn ((interp (setC 'p (numC 501)) test-env) test-sto)
           "not in environment")
-((interp (appC (lamC (list 'z 'y) 
+(v*s-v ((interp (appC (lamC (list 'z 'y) 
                      (binopC '+ (idC 'z) (idC 'y)))
                (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
-          test-env)
-test-sto)
+               test-env)
+       test-sto))
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
 
