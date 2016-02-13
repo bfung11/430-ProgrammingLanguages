@@ -46,53 +46,16 @@
               (values '* *)
               (values '/ /))))
 
-; (define (is-equal? [left : 'a] [right : 'a]) : Value
-;   (equal? left right))
-
 (define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Environment Definitions
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
- 
-(define-type-alias Environment (hashof symbol Location))
-(define empty-env (hash empty))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; Store Definitions
+; Parser Helper Functions
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-type-alias Location number)
-
-(define-type-alias Store (hashof Location Value))
-(define empty-store (hash empty))
-(define store-loc -1) ; start at -1 because after add, starts at index 0
-
-(define-type (Result 'a)
-  [v*s (v : 'a) (s : Store)])
-
-;;;;;;;;;;;;;;;;;;;;
-;
-; Parser
-;
-;;;;;;;;;;;;;;;;;;;;
-
-(define empty-array 1)
-
-(define (create-array [num : number]
-                      [elem : 'a]) : (listof 'a)
-  (cond [(= num 0) empty]
-        [else (cons elem (create-array (- num 1) elem))]))
-
-(test (create-array 0 200) empty)
-(test (create-array 4 1)
-      (list 1 1 1 1))
-
-; takes a symbol and checks whether or not the id can be used
+; given a symbol
+; returns whether the symbol is a keyword or a binop
 (define (is-id-legal? [sym : symbol]) : boolean
   (and (none? (hash-ref binop-table sym))
        (not (member sym id-keywords))))
@@ -100,7 +63,8 @@
 (test (is-id-legal? 'if) #f)
 (test (is-id-legal? 'a) #t)
 
-; takes a symbol list and checks whether all symbols are unique
+; given a list of symbol
+; returns whether or not there are duplicates in the list
 (define (is-symbol-unique? [sym-list : (listof symbol)]) : boolean
   (cond 
     [(empty? sym-list) #t]
@@ -110,10 +74,27 @@
 (test (is-symbol-unique? (list 'a 'b 'a)) #f)
 (test (is-symbol-unique? (list 'a 'b 'c)) #t)
 
-; Parses an expression.
-; expected vs. actual
+; given the number of elements and the element
+; returns a list with a size of the given number and with each cell of the list
+; be the given element
+(define (create-array [num : number]
+                      [elem : 'a]) : (listof 'a)
+  (cond [(= num 0) empty]
+        [else (cons elem (create-array (- num 1) elem))]))
+
+(test (create-array 0 200) empty)
+(test (create-array 4 1)
+      (list 1 1 1 1))
+
+;;;;;;;;;;;;;;;;;;;;
+;
+; Parser
+;
+;;;;;;;;;;;;;;;;;;;;
+
+; given an s-expression
+; returns an OWQQ expression
 ; taken from Assignment 3 by John Clements
-; bug? array and new-array -> fewer than 1 cell
 (define (parse [s : s-expression]) : OWQQ4
    (cond 
       [(s-exp-number? s) (numC (s-exp->number s))]
@@ -182,8 +163,6 @@
                                 (parse (third a-list)))]
                 [else (appC (parse first-elem)
                             (map parse (rest a-list)))]))]))
-
-; (equal? (length (s-exp->list '{array})) 1)
 
 ; taken from Assignment 3 by John Clements
 ; base types test cases
@@ -259,64 +238,6 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 
-; consumes a symbol and an environment and returns the number associated with 
-; the symbol
-; taken from 
-; Programming Languages: Application and Interpretation, 
-; by Shriram Krishnamurthi, second edition.
-; (define (lookup-evn [for : symbol] [env : Environment]) : Value
-;   (cond 
-;     [(empty? env) (error 'lookup "unbound identifier")]
-;     [else (cond
-;             [(symbol=? for (binding-name (first env)))
-;              (binding-val (first env))]
-;             [else (lookup for (rest env))])]))
-
-; (test (lookup 'x 
-;               (list (binding 'x (numV 3))
-;                     (binding 'y (numV 4))))
-;       (numV 3))
-; (test (lookup 'y 
-;               (list (binding 'x (numV 3))
-;                     (binding 'y (numV 4))))
-;       (numV 4))
-
-; consumes an operator a left and right value for a binopC and returns the
-; resulting value
-(define (do-binop [op : symbol] [left : Value] [right : Value]) : Value
-  (numV ((some-v (hash-ref binop-table op)) 
-         (numV-num left)
-         (numV-num right))))
-
-(test (do-binop '+ (numV 4) (numV 4)) (numV 8))
-(test (do-binop '* (numV 4) (numV 4)) (numV 16))
-(test (do-binop '- (numV 4) (numV 4)) (numV 0))
-(test (do-binop '/ (numV 4) (numV 4)) (numV 1))
-
-; interp before adding to env?
-; function meant to add bindings to environment
-; consumes a list of symbols, a list of Values and an environment and produces
-; a list of Bindings
-(define (add-to-env [params : (listof symbol)] 
-                    [args : (listof Location)]
-                    [env : Environment]) : Environment
-  (cond 
-    [(and (empty? params) (empty? args)) env]
-    [else (add-to-env (rest params) 
-          (rest args)
-          (hash-set env (first params) (first args)))]))
-
-(test (add-to-env (list 'x 'y 'z)
-                  (list 3 5 7)
-                  empty-env)
-      (hash (list (values 'x 3)
-                  (values 'y 5)
-                  (values 'z 7))))
-
-; alpha-computation = (Store -> (alpha * Store))
-; (Value -> ((listof Sbind) -> Result))
-; debugging - expected v. actual
-
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; Monad Definitions
@@ -326,6 +247,7 @@
 ; when returning elements, just think of it as 
 ; using the do to return the type as normal
 ; and add a computation to it, so it knows what to do when a store is added
+; debugging - expected v. actual
 
 ; give me a store and I will complete the rest
 (define-type-alias (Computation 'a) (Store -> (Result 'a)))
@@ -349,11 +271,38 @@
     [(_ rhs clause ...)
      #'(bind rhs (lambda (unused) (do clause ...)))]))
 
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Interpreter
+; Environment Definitions
 ;
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
+(define-type-alias Environment (hashof symbol Location))
+(define empty-env (hash empty))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Store Definitions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-type-alias Location number)
+
+(define-type-alias Store (hashof Location Value))
+(define empty-store (hash empty))
+(define store-loc -1) ; start at -1 because after add, starts at index 0
+(define store-env -1)
+
+(define-type (Result 'a)
+  [v*s (v : 'a) (s : Store)])
+
+(define empty-array 1)
+
+;;;;;;;;;;;;;;;;;;;;;
+;
+; Test Env / Store
+;
+;;;;;;;;;;;;;;;;;;;;;
 
 (define test-env (hash (list (values 'a 0) 
                              (values 'b 4)
@@ -382,6 +331,12 @@
                              (values 18 (numV 202))
                              (values 19 (numV 203)))))
 
+;;;;;;;;;;;;;;;;;;;;
+;
+; Store Functions
+;
+;;;;;;;;;;;;;;;;;;;;
+
 ; given a list of elements and a store
 ; add all the elements to the store
 (define (add-array-to-store [elements : (listof Value)]) : (Computation Value)
@@ -402,16 +357,16 @@
 (define (set-in-store! [loc : Location]
                        [new-value : Value]) : (Computation Value)
   (lambda ([store : Store])
-    (v*s (begin (hash-set store loc new-value) (nullV)) store)))
+    (v*s (begin (hash-set store loc new-value) (numV loc)) store)))
 
 (test (v*s-v ((add-array-to-store empty) empty-store))
       (v*s-v (v*s (nullV) empty-store)))
 (test (v*s-v ((add-array-to-store (list (numV 9) (numV 10) (numV 11))) empty-store))
       (v*s-v (v*s (nullV) empty-store)))
 (test (v*s-v ((add-to-store (numV 3)) empty-store))
-      (v*s-v (v*s (nullV) empty-store)))
+      (v*s-v (v*s (numV 3) empty-store)))
 (test (v*s-v ((set-in-store! 14 (numV 500)) test-sto))
-      (v*s-v (v*s (nullV) empty-store)))
+      (v*s-v (v*s (numV 14) empty-store)))
 
 ; given a location in the store
 ; return a value
@@ -433,6 +388,46 @@
 ; Interpreter Helper Functions
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; (define (add-to-env [params : (listof symbol)] 
+;                     [args : (listof Value)]
+;                     [env : Environment]) : Environment
+;   (cond 
+;     [(and (empty? params) (empty? args)) (lift env)]
+;     [else (do [loc <- (add-to-store (first args))]
+;               [restenv <- (add-to-env (rest params) (rest args) env)]
+;               (lift (hash-set restenv (first params) (first args))))]))
+
+; given a list of symbols, a list of Value, and an environment
+; return the new environment
+(define (add-to-env [params : (listof symbol)] 
+                    [args : (listof Value)]
+                    [env : Environment]) : (Computation Environment)
+  (cond
+    [(and (empty? params) (empty? args)) (lift env)]
+    [else (do [loc <- (add-to-store (first args))]
+              [new-env <- (lift (hash-set env (first params) (numV-num loc)))]
+              (add-to-env (rest params) (rest args) new-env))]))
+
+(test (v*s-v ((add-to-env (list 'x 'y 'z)
+            (list (numV 3) (numV 5) (numV 7))
+            empty-env) empty-store))
+      (v*s-v (v*s (hash (list (values 'x 4)
+                              (values 'y 5)
+                              (values 'z 6)))
+                  empty-store)))
+
+; given an operator and two OWQQ expressions
+; returns the value after applying the operator to them
+(define (do-binop [op : symbol] [left : Value] [right : Value]) : Value
+  (numV ((some-v (hash-ref binop-table op)) 
+         (numV-num left)
+         (numV-num right))))
+
+(test (do-binop '+ (numV 4) (numV 4)) (numV 8))
+(test (do-binop '* (numV 4) (numV 4)) (numV 16))
+(test (do-binop '- (numV 4) (numV 4)) (numV 0))
+(test (do-binop '/ (numV 4) (numV 4)) (numV 1))
 
 ; given an location of an array, the offset and the environment
 ; returns a value
@@ -488,7 +483,7 @@
       [arrayC (elems) 
         (local [(define loc (+ 1 store-loc))
                 (define arr (arrayV loc (length elems)))]
-          (do [elem-list <- (interp-listof-OWQQ elems env)]
+          (do [elem-list <- (interp-list elems env)]
               (begin (add-to-store arr)
                      (add-array-to-store elem-list)
                      (lift arr))))]
@@ -515,22 +510,24 @@
                 [boolV (b) (if b (interp t env) (interp f env))]
                 [else (error 'interp "expected boolean")]))]
       [lamC (params body) (lift (cloV params body env))]
-      ; [appC (fn args) 
-      ;   (type-case Value (interp fn env)
-      ;     [cloV (params body env)
-      ;       (local [(define (interp-again expr) (interp expr env))
-      ;               (define arg-vals (map interp-again args))
-      ;               (define new-env (add-to-env params arg-vals env))]
-      ;         (interp body new-env))]
-      ;     [else (error 'interp "expected function")])]
+      [appC (fn args) 
+        (do [id <- (interp fn env)]
+            (type-case Value id
+              [cloV (params body clo-env)
+                (do [arg-vals <- (interp-list args env)]
+                    [new-env <- (add-to-env params arg-vals clo-env)]
+                    (interp body new-env))]
+              [else (error 'interp "expected function")]))]
       [else (error 'interp "not implemented")]))
 
-(define (interp-listof-OWQQ [elems : (listof OWQQ4)]
-                            [env : Environment])
+; given a list of OWQQ expressions and an environment
+; returns 
+(define (interp-list [elems : (listof OWQQ4)]
+                     [env : Environment])
     (cond
       [(empty? elems) (lift empty)]
       [else (do [first-expr <- (interp (first elems) env)]
-                [rest-expr <- (interp-listof-OWQQ (rest elems) env)]
+                [rest-expr <- (interp-list (rest elems) env)]
                 (lift (cons first-expr rest-expr)))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -570,23 +567,22 @@
 (test (v*s-v ((interp (lamC (list 'x 'y) (numC 3)) test-env) test-sto))
       (v*s-v (v*s (cloV (list 'x 'y) (numC 3) test-env) empty-store)))
 (test (v*s-v ((interp (arrayC (list (numC 9) (idC 'x) (boolC #t))) test-env) test-sto))
-      (v*s-v (v*s (arrayV 8 3) empty-store)))
+      (v*s-v (v*s (arrayV 7 3) empty-store)))
 (test (v*s-v ((interp (array-refC (idC 'a) (numC 1)) test-env) test-sto))
       (v*s-v (v*s (numV 110) test-sto)))
 (test (v*s-v ((interp (array-refC (idC 'b) (numC 1)) test-env) test-sto))
       (v*s-v (v*s (numV 150) test-sto)))
 (test (v*s-v ((interp (array-setC (idC 'd) (numC 1) (numC 188)) test-env) test-sto))
-      (v*s-v (v*s (nullV) test-sto)))
+      (v*s-v (v*s (numV 188) test-sto)))
 (test (v*s-v ((interp (setC 'x (numC 501)) test-env) test-sto))
-      (v*s-v (v*s (nullV) empty-store)))
+      (v*s-v (v*s (numV 200) empty-store)))
 (test/exn ((interp (setC 'p (numC 501)) test-env) test-sto)
           "not in environment")
-
-; (test ((interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
-;                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
-;               empty-env)
-;       empty-store)
-;       (v*s-v (v*s (numV 121) empty-store)))
+((interp (appC (lamC (list 'z 'y) 
+                     (binopC '+ (idC 'z) (idC 'y)))
+               (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
+          test-env)
+test-sto)
 ; (test/exn (interp (appC (numC 3) empty) empty-env)
 ;           "expected function")
 
