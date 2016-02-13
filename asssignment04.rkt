@@ -492,6 +492,10 @@
         (do [new-val <- (interp val env)]
             [loc <- (interp (idC id) env)]
             (set-in-store! (numV-num loc) new-val))]
+      [beginC (exprs)
+        (do [expr-vals <- (interp-list exprs env)]
+            (lift (numV 9))
+            (lift (first (reverse expr-vals))))]
       [ifC (c t f) 
         (do [cval <- (interp c env)]
             [tval <- (interp t env)]
@@ -507,8 +511,7 @@
                 (do [arg-vals <- (interp-list args env)]
                     [new-env <- (add-to-env params arg-vals clo-env)]
                     (interp body new-env))]
-              [else (error 'interp "expected function")]))]
-      [else (error 'interp "not implemented")]))
+              [else (error 'interp "expected function")]))]))
 
 ; given a list of OWQQ expressions and an environment
 ; returns 
@@ -576,8 +579,11 @@
       (numV 100))
 (test/exn ((interp (appC (numC 3) empty) empty-env) empty-store)
           "expected function")
-(test/exn (interp (beginC (list (numC 9) (numC 4))) empty-env)
-          "not implemented")
+
+(test (v*s-v ((interp (beginC (list (binopC '+ (numC 3) (numC 2)) (numC 9)))
+                      test-env)
+            test-sto))
+      (numV 9))
 ; expected exception on test expression: '(parse '(with (z = (func () 3)) (z = 9) (z)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
