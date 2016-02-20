@@ -221,8 +221,8 @@
                     (bind 'y (numV 4))))
       (numV 4))
 
-; consumes an operator a left and right value for a binopC and returns the
-; resulting value
+; given an operator and two OWQQ expressions
+; returns the value after applying the operator to them
 (define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
   (numV ((some-v (hash-ref binop-table op)) 
          (numV-num left)
@@ -254,8 +254,8 @@
             (bind 'y (numV 5))
             (bind 'z (numV 7))))
 
-; Interprets the given expression, using the list of funs to resolve 
-; appClications.
+; given and expression
+; returns the interpreted value 
 ; taken from Assignment 3 by John Clements
 (define (interp [expr : OWQQ3] 
                 [env : Environment]) : Value
