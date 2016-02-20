@@ -35,3 +35,32 @@
 (define-type-alias Environment (listof Binding))
 (define empty-env empty)
 (define extend-env cons)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Parser Helper Functions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define binop-table
+  (hash (list (values '+ +)
+              (values '- -)
+              (values '* *)
+              (values '/ /))))
+
+(define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
+
+; given a symbol
+; returns whether the symbol is a keyword or a binop
+(define (is-id-legal? [sym : symbol]) : boolean
+  (and (none? (hash-ref binop-table sym))
+       (not (member sym id-keywords))))
+
+(test (is-id-legal? 'if) #f)
+(test (is-id-legal? 'a) #t)
+
+
+
+
