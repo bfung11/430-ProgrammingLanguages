@@ -199,60 +199,11 @@
 (test (is-symbol-unique? (list 'a 'b 'a)) #f)
 (test (is-symbol-unique? (list 'a 'b 'c)) #t)
 
-; consumes a symbol and an environment and returns the number associated with 
-; the symbol
-; taken from 
-; Programming Languages: Application and Interpretation, 
-; by Shriram Krishnamurthi, second edition.
-(define (lookup [for : symbol] [env : Environment]) : Value
-  (cond 
-    [(empty? env) (error 'lookup "unbound identifier")]
-    [else (cond
-            [(symbol=? for (bind-name (first env)))
-             (bind-val (first env))]
-            [else (lookup for (rest env))])]))
-
-(test (lookup 'x 
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
-      (numV 3))
-(test (lookup 'y 
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
-      (numV 4))
-
-; given an operator and two OWQQ expressions
-; returns the value after applying the operator to them
-(define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
-  (numV ((some-v (hash-ref binop-table op)) 
-         (numV-num left)
-         (numV-num right))))
-
-(test (binopC-to-NumV '+ (numV 4) (numV 4)) (numV 8))
-(test (binopC-to-NumV '* (numV 4) (numV 4)) (numV 16))
-(test (binopC-to-NumV '- (numV 4) (numV 4)) (numV 0))
-(test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
-
-; interp before adding to env?
-; function meant to add bindings to environment
-; consumes a list of symbols, a list of Values and an environment and produces
-; a list of Bindings
-(define (add-to-env [params : (listof symbol)] 
-                    [args : (listof Value)]
-                    [env : Environment]) : (listof Binding)
-  (cond 
-    [(and (empty? params) (empty? args)) empty]
-    [else (cons (bind (first params) (first args)) 
-                (add-to-env (rest params) (rest args) env))]))
-
-(test (add-to-env (list 'x 'y 'z)
-            (list (numV 3)
-                  (numV 5)
-                  (numV 7))
-            empty-env)
-      (list (bind 'x (numV 3))
-            (bind 'y (numV 5))
-            (bind 'z (numV 7))))
+;;;;;;;;;;;;;;;;
+;
+; Interpreter
+;
+;;;;;;;;;;;;;;;;
 
 ; given and expression
 ; returns the interpreted value 
@@ -309,6 +260,65 @@
       (numV 121))
 (test/exn (interp (appC (numC 3) empty) empty-env)
           "expected function")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Interpreter Helper Functions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; consumes a symbol and an environment and returns the number associated with 
+; the symbol
+; taken from PLAI, second edition by Shriram Krishnamurthi
+(define (lookup [for : symbol] [env : Environment]) : Value
+  (cond 
+    [(empty? env) (error 'lookup "unbound identifier")]
+    [else (cond
+            [(symbol=? for (bind-name (first env)))
+             (bind-val (first env))]
+            [else (lookup for (rest env))])]))
+
+(test (lookup 'x 
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
+      (numV 3))
+(test (lookup 'y 
+              (list (bind 'x (numV 3))
+                    (bind 'y (numV 4))))
+      (numV 4))
+
+; given an operator and two OWQQ expressions
+; returns the value after applying the operator to them
+(define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
+  (numV ((some-v (hash-ref binop-table op)) 
+         (numV-num left)
+         (numV-num right))))
+
+(test (binopC-to-NumV '+ (numV 4) (numV 4)) (numV 8))
+(test (binopC-to-NumV '* (numV 4) (numV 4)) (numV 16))
+(test (binopC-to-NumV '- (numV 4) (numV 4)) (numV 0))
+(test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
+
+; interp before adding to env?
+; function meant to add bindings to environment
+; consumes a list of symbols, a list of Values and an environment and produces
+; a list of Bindings
+(define (add-to-env [params : (listof symbol)] 
+                    [args : (listof Value)]
+                    [env : Environment]) : (listof Binding)
+  (cond 
+    [(and (empty? params) (empty? args)) empty]
+    [else (cons (bind (first params) (first args)) 
+                (add-to-env (rest params) (rest args) env))]))
+
+(test (add-to-env (list 'x 'y 'z)
+            (list (numV 3)
+                  (numV 5)
+                  (numV 7))
+            empty-env)
+      (list (bind 'x (numV 3))
+            (bind 'y (numV 5))
+            (bind 'z (numV 7))))
 
 
 
