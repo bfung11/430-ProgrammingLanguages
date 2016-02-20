@@ -192,13 +192,12 @@
       [(s-exp-match? `true s) (boolC #t)]
       [(s-exp-match? `false s) (boolC #f)]
       [(s-exp-match? `SYMBOL s) 
-        (cond [(some? (hash-ref binop-table (s-exp->symbol s))) 
-               (error 'parse "not a valid symbol")]
-              [else (idC (s-exp->symbol s))])]
+        (cond [(is-id-legal? (s-exp->symbol s)) (idC (s-exp->symbol s))]
+              [else (error 'parse "not a valid symbol")])]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
-               (parse (third a-list)) 
+               (parse (third a-list))
                (parse (fourth a-list))))]
       [(s-exp-match? '{with {SYMBOL = ANY} ... ANY} s)
         (local [(define a-list (s-exp->list s))
@@ -208,18 +207,24 @@
                 (define sym-list (map s-exp->symbol (map first bind-as-list)))
                 (define fun-list (map third bind-as-list))
                 (define body (first (reverse (rest a-list))))]
-          (appC (lamC sym-list (parse body))
-                (map parse fun-list)))]
+            (cond 
+              [(is-symbol-unique? sym-list)
+                (appC (lamC sym-list (parse body))
+                      (map parse fun-list))]
+              [else (error 'parse "symbols not unique")]))]
       [(s-exp-match? '{func {SYMBOL ...} ANY} s)
         (local [(define a-list (s-exp->list s))
                 (define params 
                         (map s-exp->symbol (s-exp->list (second a-list))))]
-          (lamC params (parse (third a-list))))]
+          (cond 
+            [(is-symbol-unique? params) (lamC params (parse (third a-list)))]
+            [else (error 'parse "params not unique")]))]
       [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-elem (first a-list))]
           (cond [(and (s-exp-symbol? first-elem) 
-                      (some? (hash-ref binop-table (s-exp->symbol first-elem))))
+                      (some? (hash-ref binop-table 
+                                       (s-exp->symbol first-elem))))
                         (binopC (s-exp->symbol first-elem)
                                 (parse (second a-list)) 
                                 (parse (third a-list)))]
@@ -284,7 +289,6 @@
 (test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
                  "#<procedure>")
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; Interpreter Test Cases
@@ -332,6 +336,8 @@
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
 (test (parse `x) (idC 'x))
+(test/exn (parse '{+ if with})
+          "not a valid symbol")
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
 (test (parse '{func {} {+ 1 2}}) 
       (lamC empty (binopC '+ (numC 1) (numC 2))))
@@ -356,7 +362,6 @@
 
 (test/exn (parse '{+ + +}) "not a valid symbol")
 ; (parse '{func {x x} 3}) (lamC ('x 'x))
-; (parse '{+ if with})
 ; (parse 'func (x x) 3')
 ; expected exception on test expression: '(parse '(+ if with))
 ; Saving submission with errors.
