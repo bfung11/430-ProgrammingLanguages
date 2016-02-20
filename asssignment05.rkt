@@ -52,16 +52,9 @@
 ; Environments
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-type Binding
-  [bind (name : symbol) (val : Value)])
  
-(define-type-alias Environment (listof Binding))
-(define empty-env empty)
-(define extend-env cons)
-
-; tips : undefined;\n cannot reference an identifier before its definition
-; tips : expected v. actual
+(define-type-alias Environment (hashof symbol Value))
+(define empty-env (hash empty))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -101,7 +94,10 @@
       [numC (n) (numV n)]
       [boolC (b) (boolV b)]
       [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
-      [idC (id) (lookup id env)]
+      [idC (id) 
+        (type-case (optionof Value) (hash-ref env id)
+          [none () (error 'interp "unbound identifier")]
+          [some (val) val])]
       [ifC (c t f) (local [(define condition (interp c env))
                            (define then (interp t env))
                            (define els (interp f env))]
@@ -124,26 +120,6 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; consumes a symbol and an environment and returns the number associated with 
-; the symbol
-; taken from PLAI, second edition by Shriram Krishnamurthi
-(define (lookup [for : symbol] [env : Environment]) : Value
-  (cond 
-    [(empty? env) (error 'lookup "unbound identifier")]
-    [else (cond
-            [(symbol=? for (bind-name (first env)))
-             (bind-val (first env))]
-            [else (lookup for (rest env))])]))
-
-(test (lookup 'x 
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
-      (numV 3))
-(test (lookup 'y 
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
-      (numV 4))
-
 ; given an operator and two OWQQ expressions
 ; returns the value after applying the operator to them
 (define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
@@ -162,20 +138,23 @@
 ; a list of Bindings
 (define (add-to-env [params : (listof symbol)] 
                     [args : (listof Value)]
-                    [env : Environment]) : (listof Binding)
+                    [env : Environment]) : Environment
   (cond 
-    [(and (empty? params) (empty? args)) empty]
-    [else (cons (bind (first params) (first args)) 
-                (add-to-env (rest params) (rest args) env))]))
+    [(and (empty? params) (empty? args)) env]
+    [else (add-to-env (rest params) 
+                      (rest args) 
+                      (hash-set env (first params) (first args)))]))
 
+(test (add-to-env empty empty (hash empty))
+      (hash empty))
 (test (add-to-env (list 'x 'y 'z)
-            (list (numV 3)
-                  (numV 5)
-                  (numV 7))
-            empty-env)
-      (list (bind 'x (numV 3))
-            (bind 'y (numV 5))
-            (bind 'z (numV 7))))
+                  (list (numV 3)
+                        (numV 5)
+                        (numV 7))
+                  empty-env)
+      (hash (list (values 'x (numV 3))
+                  (values 'y (numV 5))
+                  (values 'z (numV 7)))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;
@@ -263,6 +242,9 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
+; tips : undefined;\n cannot reference an identifier before its definition
+; tips : expected v. actual
+
 (test (top-eval '{+ 12 4}) "16")
 (test (top-eval '{* 12 4}) "48")
 (test (top-eval '{- 12 4}) "8")
@@ -308,8 +290,8 @@
 (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
       (numV 1))
 (test (interp (idC 'x)
-              (list (bind 'x (numV 3))
-                    (bind 'y (numV 4))))
+              (hash (list (values 'x (numV 3))
+                          (values 'y (numV 4)))))
       (numV 3))
 (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
@@ -317,7 +299,7 @@
           "expected boolean")
 (test/exn (interp (idC 'x) empty-env) "unbound identifier")
 (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
-      (cloV (list 'x 'y) (numC 3) (list)))
+      (cloV (list 'x 'y) (numC 3) (hash empty)))
 (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
               empty-env)
