@@ -6,31 +6,31 @@
 
 (print-only-errors #t)
 
-(define-type OWQQ3
+(define-type OWQQ5
   [numC (n : number)]
   [boolC (b : boolean)]
   [idC (id : symbol)]
-  [ifC (condition : OWQQ3) 
-       (if-true : OWQQ3) 
-       (else-statement : OWQQ3)]
+  [ifC (condition : OWQQ5) 
+       (if-true : OWQQ5) 
+       (else-statement : OWQQ5)]
   [lamC (params : (listof symbol))
-        (body : OWQQ3)]
+        (body : OWQQ5)]
   [binopC (op : symbol) ; operator
-          (l : OWQQ3) 
-          (r : OWQQ3)]
-  [appC (fn : OWQQ3) 
-        (args : (listof OWQQ3))])
+          (l : OWQQ5) 
+          (r : OWQQ5)]
+  [appC (fn : OWQQ5) 
+        (args : (listof OWQQ5))])
 
 (define-type FundefC
   [fundef (name : symbol) 
           (params : (listof symbol)) 
-          (body : OWQQ3)])
+          (body : OWQQ5)])
 
 (define-type Value
   [numV (num : number)]
   [boolV (bool : boolean)]
   [cloV (params : (listof symbol))
-        (body : OWQQ3)
+        (body : OWQQ5)
         (env : Environment)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -95,9 +95,9 @@
 ; given and expression
 ; returns the interpreted value 
 ; taken from Assignment 3 by John Clements
-(define (interp [expr : OWQQ3] 
+(define (interp [expr : OWQQ5] 
                 [env : Environment]) : Value
-    (type-case OWQQ3 expr
+    (type-case OWQQ5 expr
       [numC (n) (numV n)]
       [boolC (b) (boolV b)]
       [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
@@ -186,7 +186,7 @@
 ; given an s-expression
 ; returns an OWQQ expression
 ; taken from Assignment 5 by John Clements
-(define (parse [s : s-expression]) : OWQQ3
+(define (parse [s : s-expression]) : OWQQ5
    (cond 
       [(s-exp-number? s) (numC (s-exp->number s))]
       [(s-exp-match? `true s) (boolC #t)]
