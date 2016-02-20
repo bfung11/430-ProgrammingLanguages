@@ -46,6 +46,26 @@
 (define empty-env empty)
 (define extend-env cons)
 
+; consumes an expression and parses and interprets it
+; taken from Assignment 3 by John Clements
+(define (top-eval [s : s-expression]) : string
+  (serialize (interp (parse s) empty-env)))
+
+; taken from Assignment 3 by John Clements
+(test (top-eval '{+ 12 4}) "16")
+(test (top-eval '{* 12 4}) "48")
+(test (top-eval '{- 12 4}) "8")
+(test (top-eval '{/ 12 4}) "3")
+(test (top-eval `true) "true")
+(test (top-eval `false) "false")
+(test (top-eval '{if true 3 4}) "3")
+(test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
+(test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
+(test (top-eval '{with {z = {+ 9 14}}
+                       {y = 98}
+                       {+ z y}})
+      "121")
+
 ; Consumes a value and produces a string
 ; taken from Assignment 3 by John Clements
 (define (serialize [value : Value]) : string
@@ -63,9 +83,15 @@
 (test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
                  "#<procedure>")
 
-; Parses an expression.
-; expected vs. actual
-; taken from Assignment 3 by John Clements
+;;;;;;;;;;;;;;;;;;;;
+;
+; Parser
+;
+;;;;;;;;;;;;;;;;;;;;
+
+; given an s-expression
+; returns an OWQQ expression
+; taken from Assignment 5 by John Clements
 (define (parse [s : s-expression]) : OWQQ3
    (cond 
       [(s-exp-number? s) (numC (s-exp->number s))]
@@ -139,6 +165,32 @@
 ; (parse 'func (x x) 3')
 ; expected exception on test expression: '(parse '(+ if with))
 ; Saving submission with errors.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Parser Helper Functions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; given a symbol
+; returns whether the symbol is a keyword or a binop
+(define (is-id-legal? [sym : symbol]) : boolean
+  (and (none? (hash-ref binop-table sym))
+       (not (member sym id-keywords))))
+
+(test (is-id-legal? 'if) #f)
+(test (is-id-legal? 'a) #t)
+
+; given a list of symbol
+; returns whether or not there are duplicates in the list
+(define (is-symbol-unique? [sym-list : (listof symbol)]) : boolean
+  (cond 
+    [(empty? sym-list) #t]
+    [else (and (not (member (first sym-list) (rest sym-list)))
+               (is-symbol-unique? (rest sym-list)))]))
+
+(test (is-symbol-unique? (list 'a 'b 'a)) #f)
+(test (is-symbol-unique? (list 'a 'b 'c)) #t)
 
 ; consumes a symbol and an environment and returns the number associated with 
 ; the symbol
@@ -250,26 +302,6 @@
       (numV 121))
 (test/exn (interp (appC (numC 3) empty) empty-env)
           "expected function")
-
-; consumes an expression and parses and interprets it
-; taken from Assignment 3 by John Clements
-(define (top-eval [s : s-expression]) : string
-  (serialize (interp (parse s) empty-env)))
-
-; taken from Assignment 3 by John Clements
-(test (top-eval '{+ 12 4}) "16")
-(test (top-eval '{* 12 4}) "48")
-(test (top-eval '{- 12 4}) "8")
-(test (top-eval '{/ 12 4}) "3")
-(test (top-eval `true) "true")
-(test (top-eval `false) "false")
-(test (top-eval '{if true 3 4}) "3")
-(test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
-(test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
-(test (top-eval '{with {z = {+ 9 14}}
-                       {y = 98}
-                       {+ z y}})
-      "121")
 
 
 
