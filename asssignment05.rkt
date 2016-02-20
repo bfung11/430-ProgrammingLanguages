@@ -27,3 +27,11 @@
   [cloV (params : (listof symbol))
         (body : OWQQ3)
         (env : Environment)])
+
+; todo change environment to be a hash table
+(define-type Binding
+  [bind (name : symbol) (val : Value)])
+ 
+(define-type-alias Environment (listof Binding))
+(define empty-env empty)
+(define extend-env cons)
