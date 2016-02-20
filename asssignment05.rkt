@@ -46,8 +46,15 @@
 (define empty-env empty)
 (define extend-env cons)
 
-; consumes an expression and parses and interprets it
-; taken from Assignment 3 by John Clements
+;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Top Level Functions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; given an expression
+; returns a string after parsing and interpreting expression
+; taken from Assignment 5 by John Clements
 (define (top-eval [s : s-expression]) : string
   (serialize (interp (parse s) empty-env)))
 
@@ -66,7 +73,7 @@
                        {+ z y}})
       "121")
 
-; Consumes a value and produces a string
+; given a value and returns a string
 ; taken from Assignment 3 by John Clements
 (define (serialize [value : Value]) : string
   (type-case Value value
