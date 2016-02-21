@@ -41,27 +41,42 @@
 
 ; given an operator and two OWQQ expressions
 ; returns the number as a Value after applying the operator to them
-(define (num-to-NumV [op : (number number -> number)]) : (Value Value -> Value)
+(define (do-arithmetic [op : (number number -> number)]) : (Value Value -> Value)
   (lambda ([left : Value]
            [right : Value])
     (cond 
       [(and (numV? left) (numV? right)) 
        (numV (op (numV-num left) (numV-num right)))]
-      [else (error 'num-to-NumV "expects two numbers")])))
+      [else (error 'do-arithmetic "expects two numbers")])))
 
-(test ((num-to-NumV +) (numV 4) (numV 4)) (numV 8))
-(test ((num-to-NumV -) (numV 4) (numV 4)) (numV 0))
-(test ((num-to-NumV *) (numV 4) (numV 4)) (numV 16))
-(test ((num-to-NumV /) (numV 4) (numV 4)) (numV 1))
-(test/exn ((num-to-NumV /) (boolV #t) (numV 4)) "expects two numbers")
-(test/exn ((num-to-NumV /) (numV 4) (boolV #t)) "expects two numbers")
+(test ((do-arithmetic +) (numV 4) (numV 4)) (numV 8))
+(test ((do-arithmetic -) (numV 4) (numV 4)) (numV 0))
+(test ((do-arithmetic *) (numV 4) (numV 4)) (numV 16))
+(test ((do-arithmetic /) (numV 4) (numV 4)) (numV 1))
+(test/exn ((do-arithmetic /) (boolV #t) (numV 4)) "expects two numbers")
+(test/exn ((do-arithmetic /) (numV 4) (boolV #t)) "expects two numbers")
 
+; (define (do-arithmetic [op : (number number -> number)]) : (Value Value -> Value)
+;   (lambda ([left : Value]
+;            [right : Value])
+;     (cond 
+;       [(and (numV? left) (numV? right)) 
+;        (numV (op (numV-num left) (numV-num right)))]
+;       [else (error 'do-arithmetic "expects two numbers")])))
+
+; (define (do-arithmetic [op : (number number -> number)]) : (Value Value -> Value)
+;   (lambda ([left : Value]
+;            [right : Value])
+;     (cond 
+;       [(and (numV? left) (numV? right)) 
+;        (numV (op (numV-num left) (numV-num right)))]
+;       [else (error 'do-arithmetic "expects two numbers")])))
 
 (define binop-table
-  (hash (list (values '+ (num-to-NumV +))
-              (values '- (num-to-NumV -))
-              (values '* (num-to-NumV *))
-              (values '/ (num-to-NumV /)))))
+  (hash (list (values '+ (do-arithmetic +))
+              (values '- (do-arithmetic -))
+              (values '* (do-arithmetic *))
+              (values '/ (do-arithmetic /)))))
 
 (define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
 
