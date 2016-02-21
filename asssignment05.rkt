@@ -311,6 +311,7 @@
 (test (top-eval '{/ 12 4}) "3")
 (test (top-eval `true) "true")
 (test (top-eval `false) "false")
+(test (top-eval `"hello") "hello")
 (test (top-eval '{if true 3 4}) "3")
 (test (top-eval '{if true {+ 8 8} {+ 1 1}}) "16")
 (test (top-eval '{{func {z y} {+ z y}} {+ 9 14} 98}) "121")
