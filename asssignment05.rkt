@@ -10,6 +10,7 @@
   [numC (n : number)]
   [boolC (b : boolean)]
   [idC (id : symbol)]
+  [stringC (str : string)]
   [ifC (condition : OWQQ5) 
        (if-true : OWQQ5) 
        (else-statement : OWQQ5)]
@@ -184,7 +185,8 @@
                     (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
               (interp body new-env))]
-          [else (error 'interp "expected function")])]))
+          [else (error 'interp "expected function")])]
+      [else (error 'interp "not implemented")]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
