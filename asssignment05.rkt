@@ -39,11 +39,24 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; given an operator and two OWQQ expressions
+; returns the number as a Value after applying the operator to them
+(define (num-to-NumV [op : (number number -> number)]) : (Value Value -> Value)
+  (lambda ([left : Value]
+           [right : Value]) 
+    (numV (op (numV-num left)
+              (numV-num right)))))
+
+(test ((num-to-NumV +) (numV 4) (numV 4)) (numV 8))
+(test ((num-to-NumV -) (numV 4) (numV 4)) (numV 0))
+(test ((num-to-NumV *) (numV 4) (numV 4)) (numV 16))
+(test ((num-to-NumV /) (numV 4) (numV 4)) (numV 1))
+
 (define binop-table
-  (hash (list (values '+ +)
-              (values '- -)
-              (values '* *)
-              (values '/ /))))
+  (hash (list (values '+ (num-to-NumV +))
+              (values '- (num-to-NumV -))
+              (values '* (num-to-NumV *))
+              (values '/ (num-to-NumV /)))))
 
 (define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
 
@@ -93,7 +106,8 @@
     (type-case OWQQ5 expr
       [numC (n) (numV n)]
       [boolC (b) (boolV b)]
-      [binopC (s l r) (binopC-to-NumV s (interp l env) (interp r env))]
+      [binopC (s l r) 
+        ((some-v (hash-ref binop-table s)) (interp l env) (interp r env))]
       [idC (id) 
         (type-case (optionof Value) (hash-ref env id)
           [none () (error 'interp "unbound identifier")]
@@ -119,18 +133,6 @@
 ; Interpreter Helper Functions
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; given an operator and two OWQQ expressions
-; returns the value after applying the operator to them
-(define (binopC-to-NumV [op : symbol] [left : Value] [right : Value]) : Value
-  (numV ((some-v (hash-ref binop-table op)) 
-         (numV-num left)
-         (numV-num right))))
-
-(test (binopC-to-NumV '+ (numV 4) (numV 4)) (numV 8))
-(test (binopC-to-NumV '* (numV 4) (numV 4)) (numV 16))
-(test (binopC-to-NumV '- (numV 4) (numV 4)) (numV 0))
-(test (binopC-to-NumV '/ (numV 4) (numV 4)) (numV 1))
 
 ; interp before adding to env?
 ; function meant to add bindings to environment
@@ -259,6 +261,12 @@
                        {+ z y}})
       "121")
 
+; {if {<= 4 3} 29387 true}
+
+; while evaluating (top-eval (quasiquote (if (<= 4 3) 29387 true))):
+;   interp: unbound identifier
+; Saving submission with errors.
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; Serialize Test Cases
@@ -281,14 +289,14 @@
 (test (interp (numC 8) empty-env) (numV 8))
 (test (interp (boolC #t) empty-env) (boolV #t))
 (test (interp (boolC #f) empty-env) (boolV #f))
-(test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
-      (numV 6))
-(test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
-      (numV 0))
-(test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
-      (numV 9))
-(test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
-      (numV 1))
+; (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
+;       (numV 6))
+; (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
+;       (numV 0))
+; (test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
+;       (numV 9))
+; (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
+;       (numV 1))
 (test (interp (idC 'x)
               (hash (list (values 'x (numV 3))
                           (values 'y (numV 4)))))
@@ -341,12 +349,7 @@
                     {+ z y}})
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
-
 (test/exn (parse '{+ + +}) "not a valid symbol")
-; (parse '{func {x x} 3}) (lamC ('x 'x))
-; (parse 'func (x x) 3')
-; expected exception on test expression: '(parse '(+ if with))
-; Saving submission with errors.
 
 
 
