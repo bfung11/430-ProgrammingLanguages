@@ -230,6 +230,7 @@
       [(s-exp-match? `SYMBOL s) 
         (cond [(is-id-legal? (s-exp->symbol s)) (idC (s-exp->symbol s))]
               [else (error 'parse "not a valid symbol")])]
+      [(s-exp-match? `STRING s) (stringC (s-exp->string s))]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
           (ifC (parse (second a-list)) 
@@ -387,6 +388,7 @@
 (test (parse `true) (boolC #t))
 (test (parse `false) (boolC #f))
 (test (parse `x) (idC 'x))
+(test (parse `"hello") (stringC "hello"))
 (test/exn (parse '{+ if with})
           "not a valid symbol")
 (test (parse '{if 1 2 3}) (ifC (numC 1) (numC 2) (numC 3)))
