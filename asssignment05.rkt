@@ -33,11 +33,11 @@
         (body : OWQQ5)
         (env : Environment)])
 
-;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Keywords
+; Keyword Helper Functions
 ;
-;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; given an operator and two OWQQ expressions
 ; returns the number as a Value after applying the operator to them
@@ -49,13 +49,8 @@
        (numV (op (numV-num left) (numV-num right)))]
       [else (error 'do-arithmetic "expects two numbers")])))
 
-(test ((do-arithmetic +) (numV 4) (numV 4)) (numV 8))
-(test ((do-arithmetic -) (numV 4) (numV 4)) (numV 0))
-(test ((do-arithmetic *) (numV 4) (numV 4)) (numV 16))
-(test ((do-arithmetic /) (numV 4) (numV 4)) (numV 1))
-(test/exn ((do-arithmetic /) (boolV #t) (numV 4)) "expects two numbers")
-(test/exn ((do-arithmetic /) (numV 4) (boolV #t)) "expects two numbers")
-
+; given an operator and two OWQQ expressions
+; returns the boolean as a Value after applying the operator to them
 (define (less-than-or-equal? [op : (number number -> boolean)]) : (Value Value -> Value)
   (lambda ([left : Value]
            [right : Value])
@@ -64,12 +59,8 @@
        (boolV (op (numV-num left) (numV-num right)))]
       [else (error 'less-than-or-equal? "expects two numbers")])))
 
-(test ((less-than-or-equal? <=) (numV 4) (numV 4)) (boolV #t))
-(test ((less-than-or-equal? <=) (numV 4) (numV 5)) (boolV #t))
-(test ((less-than-or-equal? <=) (numV 4) (numV 3)) (boolV #f))
-(test/exn ((less-than-or-equal? <=) (boolV #t) (numV 4)) "expects two numbers")
-(test/exn ((less-than-or-equal? <=) (numV 4) (boolV #t)) "expects two numbers")
-
+; given two OWQQ expressions
+; returns the number as a Value after applying the operator to them
 (define is-equal? : (Value Value -> Value)
   (lambda ([left : Value]
            [right : Value])
@@ -80,6 +71,24 @@
        (boolV (eq? (boolV-bool left) (boolV-bool right)))]
       [else (error 'do-arithmetic "expects two numbers or two booleans")])))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Keyword Helper Function Test Cases
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(test ((do-arithmetic +) (numV 4) (numV 4)) (numV 8))
+(test ((do-arithmetic -) (numV 4) (numV 4)) (numV 0))
+(test ((do-arithmetic *) (numV 4) (numV 4)) (numV 16))
+(test ((do-arithmetic /) (numV 4) (numV 4)) (numV 1))
+(test/exn ((do-arithmetic /) (boolV #t) (numV 4)) "expects two numbers")
+(test/exn ((do-arithmetic /) (numV 4) (boolV #t)) "expects two numbers")
+
+(test ((less-than-or-equal? <=) (numV 4) (numV 4)) (boolV #t))
+(test ((less-than-or-equal? <=) (numV 4) (numV 5)) (boolV #t))
+(test ((less-than-or-equal? <=) (numV 4) (numV 3)) (boolV #f))
+(test/exn ((less-than-or-equal? <=) (boolV #t) (numV 4)) "expects two numbers")
+(test/exn ((less-than-or-equal? <=) (numV 4) (boolV #t)) "expects two numbers")
 
 (test (is-equal? (numV 4) (numV 4)) (boolV #t))
 (test (is-equal? (numV 4) (numV 5)) (boolV #f))
@@ -92,6 +101,12 @@
           "expects two numbers or two booleans")
 (test/exn (is-equal? (numV 4) (boolV #t)) 
           "expects two numbers or two booleans")
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Keywords
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define binop-table
   (hash (list (values '+ (do-arithmetic +))
