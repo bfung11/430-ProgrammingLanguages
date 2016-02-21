@@ -56,13 +56,19 @@
 (test/exn ((do-arithmetic /) (boolV #t) (numV 4)) "expects two numbers")
 (test/exn ((do-arithmetic /) (numV 4) (boolV #t)) "expects two numbers")
 
-; (define (do-arithmetic [op : (number number -> number)]) : (Value Value -> Value)
-;   (lambda ([left : Value]
-;            [right : Value])
-;     (cond 
-;       [(and (numV? left) (numV? right)) 
-;        (numV (op (numV-num left) (numV-num right)))]
-;       [else (error 'do-arithmetic "expects two numbers")])))
+(define (less-than-or-equal [op : (number number -> boolean)]) : (Value Value -> Value)
+  (lambda ([left : Value]
+           [right : Value])
+    (cond 
+      [(and (numV? left) (numV? right)) 
+       (boolV (op (numV-num left) (numV-num right)))]
+      [else (error 'less-than-or-equal "expects two numbers")])))
+
+(test ((less-than-or-equal <=) (numV 4) (numV 4)) (boolV #t))
+(test ((less-than-or-equal <=) (numV 4) (numV 5)) (boolV #t))
+(test ((less-than-or-equal <=) (numV 4) (numV 3)) (boolV #f))
+(test/exn ((less-than-or-equal <=) (boolV #t) (numV 4)) "expects two numbers")
+(test/exn ((less-than-or-equal <=) (numV 4) (boolV #t)) "expects two numbers")
 
 ; (define (do-arithmetic [op : (number number -> number)]) : (Value Value -> Value)
 ;   (lambda ([left : Value]
