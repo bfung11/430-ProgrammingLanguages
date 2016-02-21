@@ -116,7 +116,7 @@
               (values '<= less-than-or-equal?)
               (values 'eq? is-equal?))))
 
-(define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
+(define id-keywords (list 'if 'true 'false 'func 'with  'array '<- '= 'begin))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -319,12 +319,6 @@
                        {+ z y}})
       "121")
 
-; {if {<= 4 3} 29387 true}
-
-; while evaluating (top-eval (quasiquote (if (<= 4 3) 29387 true))):
-;   interp: unbound identifier
-; Saving submission with errors.
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; Serialize Test Cases
@@ -420,6 +414,5 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 (test/exn (parse '{+ + +}) "not a valid symbol")
-
 
 
