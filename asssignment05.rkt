@@ -66,6 +66,8 @@
        (boolV (= (numV-num left) (numV-num right)))]
       [(and (boolV? left) (boolV? right)) 
        (boolV (eq? (boolV-bool left) (boolV-bool right)))]
+      [(and (stringV? left) (stringV? right)) 
+       (boolV (equal? (stringV-str left) (stringV-str right)))]
       [else (error 'do-arithmetic "expects two numbers or two booleans")])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -94,6 +96,8 @@
 (test (is-equal? (boolV #t) (boolV #f)) (boolV #f))
 (test (is-equal? (boolV #f) (boolV #t)) (boolV #f))
 (test (is-equal? (boolV #f) (boolV #f)) (boolV #t))
+(test (is-equal? (stringV "hello") (stringV "hello")) (boolV #t))
+(test (is-equal? (stringV "hello") (stringV "it's me")) (boolV #f))
 (test/exn (is-equal? (boolV #t) (numV 4)) 
           "expects two numbers or two booleans")
 (test/exn (is-equal? (numV 4) (boolV #t)) 
