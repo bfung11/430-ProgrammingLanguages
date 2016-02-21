@@ -25,6 +25,7 @@
 (define-type Value
   [numV (num : number)]
   [boolV (bool : boolean)]
+  [stringV (str : string)]
   [cloV (params : (listof symbol))
         (body : OWQQ5)
         (env : Environment)])
@@ -144,6 +145,7 @@
       (cond 
         [(equal? b #t) "true"]
         [else "false"])]
+    [stringV (str) str]
     [cloV (p b e) "#<procedure>"]))
 
 ;;;;;;;;;;;;;;;;
@@ -166,6 +168,7 @@
         (type-case (optionof Value) (hash-ref env id)
           [none () (error 'interp "unbound identifier")]
           [some (val) val])]
+      [stringC (str) (stringV str)]
       [ifC (c t f) (local [(define condition (interp c env))
                            (define then (interp t env))
                            (define els (interp f env))]
@@ -180,8 +183,7 @@
                     (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
               (interp body new-env))]
-          [else (error 'interp "expected function")])]
-      [else (error 'interp "not implemented")]))
+          [else (error 'interp "expected function")])]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -363,6 +365,7 @@
               (hash (list (values 'x (numV 3))
                           (values 'y (numV 4)))))
       (numV 3))
+(test (interp (stringC "hello") empty-env) (stringV "hello"))
 (test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
 (test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
 (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
