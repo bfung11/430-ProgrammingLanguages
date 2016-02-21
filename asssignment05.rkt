@@ -49,14 +49,14 @@
        (numV (op (numV-num left) (numV-num right)))]
       [else (error 'do-arithmetic "expects two numbers")])))
 
-; given an operator and two OWQQ expressions
+; given two OWQQ expressions
 ; returns the boolean as a Value after applying the operator to them
-(define (less-than-or-equal? [op : (number number -> boolean)]) : (Value Value -> Value)
+(define less-than-or-equal? : (Value Value -> Value)
   (lambda ([left : Value]
            [right : Value])
     (cond 
       [(and (numV? left) (numV? right)) 
-       (boolV (op (numV-num left) (numV-num right)))]
+       (boolV (<= (numV-num left) (numV-num right)))]
       [else (error 'less-than-or-equal? "expects two numbers")])))
 
 ; given two OWQQ expressions
@@ -84,11 +84,11 @@
 (test/exn ((do-arithmetic /) (boolV #t) (numV 4)) "expects two numbers")
 (test/exn ((do-arithmetic /) (numV 4) (boolV #t)) "expects two numbers")
 
-(test ((less-than-or-equal? <=) (numV 4) (numV 4)) (boolV #t))
-(test ((less-than-or-equal? <=) (numV 4) (numV 5)) (boolV #t))
-(test ((less-than-or-equal? <=) (numV 4) (numV 3)) (boolV #f))
-(test/exn ((less-than-or-equal? <=) (boolV #t) (numV 4)) "expects two numbers")
-(test/exn ((less-than-or-equal? <=) (numV 4) (boolV #t)) "expects two numbers")
+(test (less-than-or-equal? (numV 4) (numV 4)) (boolV #t))
+(test (less-than-or-equal? (numV 4) (numV 5)) (boolV #t))
+(test (less-than-or-equal? (numV 4) (numV 3)) (boolV #f))
+(test/exn (less-than-or-equal? (boolV #t) (numV 4)) "expects two numbers")
+(test/exn (less-than-or-equal? (numV 4) (boolV #t)) "expects two numbers")
 
 (test (is-equal? (numV 4) (numV 4)) (boolV #t))
 (test (is-equal? (numV 4) (numV 5)) (boolV #f))
@@ -113,7 +113,7 @@
               (values '- (do-arithmetic -))
               (values '* (do-arithmetic *))
               (values '/ (do-arithmetic /))
-              (values '<= (less-than-or-equal? <=))
+              (values '<= less-than-or-equal?)
               (values 'eq? is-equal?))))
 
 (define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
