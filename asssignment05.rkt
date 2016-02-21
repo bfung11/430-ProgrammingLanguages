@@ -56,34 +56,50 @@
 (test/exn ((do-arithmetic /) (boolV #t) (numV 4)) "expects two numbers")
 (test/exn ((do-arithmetic /) (numV 4) (boolV #t)) "expects two numbers")
 
-(define (less-than-or-equal [op : (number number -> boolean)]) : (Value Value -> Value)
+(define (less-than-or-equal? [op : (number number -> boolean)]) : (Value Value -> Value)
   (lambda ([left : Value]
            [right : Value])
     (cond 
       [(and (numV? left) (numV? right)) 
        (boolV (op (numV-num left) (numV-num right)))]
-      [else (error 'less-than-or-equal "expects two numbers")])))
+      [else (error 'less-than-or-equal? "expects two numbers")])))
 
-(test ((less-than-or-equal <=) (numV 4) (numV 4)) (boolV #t))
-(test ((less-than-or-equal <=) (numV 4) (numV 5)) (boolV #t))
-(test ((less-than-or-equal <=) (numV 4) (numV 3)) (boolV #f))
-(test/exn ((less-than-or-equal <=) (boolV #t) (numV 4)) "expects two numbers")
-(test/exn ((less-than-or-equal <=) (numV 4) (boolV #t)) "expects two numbers")
+(test ((less-than-or-equal? <=) (numV 4) (numV 4)) (boolV #t))
+(test ((less-than-or-equal? <=) (numV 4) (numV 5)) (boolV #t))
+(test ((less-than-or-equal? <=) (numV 4) (numV 3)) (boolV #f))
+(test/exn ((less-than-or-equal? <=) (boolV #t) (numV 4)) "expects two numbers")
+(test/exn ((less-than-or-equal? <=) (numV 4) (boolV #t)) "expects two numbers")
 
-; (define (do-arithmetic [op : (number number -> number)]) : (Value Value -> Value)
-;   (lambda ([left : Value]
-;            [right : Value])
-;     (cond 
-;       [(and (numV? left) (numV? right)) 
-;        (numV (op (numV-num left) (numV-num right)))]
-;       [else (error 'do-arithmetic "expects two numbers")])))
+(define is-equal? : (Value Value -> Value)
+  (lambda ([left : Value]
+           [right : Value])
+    (cond 
+      [(and (numV? left) (numV? right)) 
+       (boolV (= (numV-num left) (numV-num right)))]
+      [(and (boolV? left) (boolV? right)) 
+       (boolV (eq? (boolV-bool left) (boolV-bool right)))]
+      [else (error 'do-arithmetic "expects two numbers or two booleans")])))
+
+
+(test (is-equal? (numV 4) (numV 4)) (boolV #t))
+(test (is-equal? (numV 4) (numV 5)) (boolV #f))
+(test (is-equal? (numV 4) (numV 3)) (boolV #f))
+(test (is-equal? (boolV #t) (boolV #t)) (boolV #t))
+(test (is-equal? (boolV #t) (boolV #f)) (boolV #f))
+(test (is-equal? (boolV #f) (boolV #t)) (boolV #f))
+(test (is-equal? (boolV #f) (boolV #f)) (boolV #t))
+(test/exn (is-equal? (boolV #t) (numV 4)) 
+          "expects two numbers or two booleans")
+(test/exn (is-equal? (numV 4) (boolV #t)) 
+          "expects two numbers or two booleans")
 
 (define binop-table
   (hash (list (values '+ (do-arithmetic +))
               (values '- (do-arithmetic -))
               (values '* (do-arithmetic *))
               (values '/ (do-arithmetic /))
-              (values '<= (less-than-or-equal <=)))))
+              (values '<= (less-than-or-equal? <=))
+              (values 'eq? is-equal?))))
 
 (define id-keywords (list 'if 'true 'false 'fn 'with  'array '<- '= 'begin))
 
