@@ -128,7 +128,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
  
-(define-type-alias Environment (hashof symbol Value))
+(define-type-alias Environment (hashof symbol (boxof Value)))
 (define empty-env (hash empty))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -145,8 +145,8 @@
 
 ; given a value and returns a string
 ; taken from Assignment 3 by John Clements
-(define (serialize [value : Value]) : string
-  (type-case Value value
+(define (serialize [value : (boxof Value)]) : string
+  (type-case Value (unbox value)
     [numV (n) (to-string n)]
     [boolV (b) 
       (cond 
@@ -165,39 +165,41 @@
 ; returns the interpreted value 
 ; taken from Assignment 3 by John Clements
 (define (interp [expr : OWQQ5] 
-                [env : Environment]) : Value
+                [env : Environment]) : (boxof Value)
     (type-case OWQQ5 expr
-      [numC (n) (numV n)]
-      [boolC (b) (boolV b)]
+      [numC (n) (box (numV n))]
+      [boolC (b) (box (boolV b))]
       [binopC (s l r) 
-        ((some-v (hash-ref binop-table s)) (interp l env) (interp r env))]
+        (box ((some-v (hash-ref binop-table s)) 
+              (unbox (interp l env))
+              (unbox (interp r env))))]
       [idC (id) 
-        (type-case (optionof Value) (hash-ref env id)
+        (type-case (optionof (boxof Value)) (hash-ref env id)
           [none () (error 'interp "unbound identifier")]
           [some (val) val])]
-      [stringC (str) (stringV str)]
-      [ifC (c t f) (local [(define condition (interp c env))
+      [stringC (str) (box (stringV str))]
+      [ifC (c t f) (local [(define condition (unbox (interp c env)))
                            (define then (interp t env))
                            (define els (interp f env))]
                      (type-case Value condition
                        [boolV (b) (if b then els)]
                        [else (error 'interp "expected boolean")]))] 
-      [lamC (params body) (cloV params body env)]
+      [lamC (params body) (box (cloV params body env))]
       ; [recC (name rhs body)
       ;       (local [(define b (box (numV 12)))
-      ;               (define new-env (cons (bind name b) env))
+      ;               (define new-env (add-to-env (list name) (list b) env))
       ;               (define rhsval (interp rhs new-env))]
       ;         (begin (set-box! b rhsval)
-      ;                (interp body new-env)))]))
+      ;                (interp body new-env)))]
       [appC (fn args) 
-        (type-case Value (interp fn env)
+        (type-case Value (unbox (interp fn env))
           [cloV (params body env)
             (local [(define (interp-again expr) (interp expr env))
                     (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
               (interp body new-env))]
           [else (error 'interp "expected function")])]
-      [else (error 'interp "not implemented")]))
+        [else (error 'interp "not implemented")]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -210,7 +212,7 @@
 ; consumes a list of symbols, a list of Values and an environment and produces
 ; a list of Bindings
 (define (add-to-env [params : (listof symbol)] 
-                    [args : (listof Value)]
+                    [args : (listof (boxof Value))]
                     [env : Environment]) : Environment
   (cond 
     [(and (empty? params) (empty? args)) env]
@@ -221,13 +223,13 @@
 (test (add-to-env empty empty (hash empty))
       (hash empty))
 (test (add-to-env (list 'x 'y 'z)
-                  (list (numV 3)
-                        (numV 5)
-                        (numV 7))
+                  (list (box (numV 3))
+                        (box (numV 5))
+                        (box (numV 7)))
                   empty-env)
-      (hash (list (values 'x (numV 3))
-                  (values 'y (numV 5))
-                  (values 'z (numV 7)))))
+      (hash (list (values 'x (box (numV 3)))
+                  (values 'y (box (numV 5)))
+                  (values 'z (box (numV 7))))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;
@@ -346,10 +348,10 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(test (serialize (numV 4)) "4")
-(test (serialize (boolV true)) "true")
-(test (serialize (boolV false)) "false")
-(test (serialize (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env)) 
+(test (serialize (box (numV 4))) "4")
+(test (serialize (box (boolV true))) "true")
+(test (serialize (box (boolV false))) "false")
+(test (serialize (box (cloV (list 'x 'y) (binopC '+ (numC 3) (numC 4)) empty-env))) 
                  "#<procedure>")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -358,50 +360,57 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(test (interp (numC 3) empty-env) (numV 3))
-(test (interp (numC 8) empty-env) (numV 8))
-(test (interp (boolC #t) empty-env) (boolV #t))
-(test (interp (boolC #f) empty-env) (boolV #f))
+(test (interp (numC 3) empty-env) 
+      (box (numV 3)))
+(test (interp (numC 8) empty-env) 
+      (box (numV 8)))
+(test (interp (boolC #t) empty-env) 
+      (box (boolV #t)))
+(test (interp (boolC #f) empty-env) 
+      (box (boolV #f)))
 (test (interp (binopC '+ (numC 3) (numC 3)) empty-env) 
-      (numV 6))
+      (box (numV 6)))
 (test (interp (binopC '- (numC 3) (numC 3)) empty-env) 
-      (numV 0))
+      (box (numV 0)))
 (test (interp (binopC '* (numC 3) (numC 3)) empty-env) 
-      (numV 9))
+      (box (numV 9)))
 (test (interp (binopC '/ (numC 3) (numC 3)) empty-env) 
-      (numV 1))
+      (box (numV 1)))
 (test (interp (binopC '<= (numC 3) (numC 3)) empty-env) 
-      (boolV #t))
+      (box (boolV #t)))
 (test (interp (binopC '<= (numC 3) (numC 2)) empty-env) 
-      (boolV #f))
+      (box (boolV #f)))
 (test (interp (binopC 'eq? (numC 3) (numC 3)) empty-env) 
-      (boolV #t))
+      (box (boolV #t)))
 (test (interp (binopC 'eq? (numC 3) (numC 2)) empty-env) 
-      (boolV #f))
+      (box (boolV #f)))
 (test (interp (binopC 'eq? (boolC #f) (boolC #f)) empty-env) 
-      (boolV #t))
+      (box (boolV #t)))
 (test (interp (binopC 'eq? (boolC #t) (boolC #f)) empty-env) 
-      (boolV #f))
+      (box (boolV #f)))
 (test (interp (binopC 'eq? (stringC "hello") (stringC "hello")) empty-env) 
-      (boolV #t))
+      (box (boolV #t)))
 (test (interp (binopC 'eq? (stringC "hello") (stringC "it's me")) empty-env) 
-      (boolV #f))
+      (box (boolV #f)))
 (test (interp (idC 'x)
-              (hash (list (values 'x (numV 3))
-                          (values 'y (numV 4)))))
-      (numV 3))
-(test (interp (stringC "hello") empty-env) (stringV "hello"))
-(test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) (numV 4))
-(test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) (numV 5))
+              (hash (list (values 'x (box (numV 3)))
+                          (values 'y (box (numV 4))))))
+      (box (numV 3)))
+(test/exn (interp (idC 'x) empty-env) "unbound identifier")
+(test (interp (stringC "hello") empty-env) 
+      (box (stringV "hello")))
+(test (interp (ifC (boolC #t) (numC 4) (numC 5)) empty-env) 
+      (box (numV 4)))
+(test (interp (ifC (boolC #f) (numC 4) (numC 5)) empty-env) 
+      (box (numV 5)))
 (test/exn (interp (ifC (numC 3) (numC 4) (numC 5)) empty-env) 
           "expected boolean")
-(test/exn (interp (idC 'x) empty-env) "unbound identifier")
 (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
-      (cloV (list 'x 'y) (numC 3) (hash empty)))
+      (box (cloV (list 'x 'y) (numC 3) (hash empty))))
 (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
               empty-env)
-      (numV 121))
+      (box (numV 121)))
 (test/exn (interp (appC (numC 3) empty) empty-env)
           "expected function")
 
