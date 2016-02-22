@@ -185,12 +185,12 @@
                        [boolV (b) (if b then els)]
                        [else (error 'interp "expected boolean")]))] 
       [lamC (params body) (box (cloV params body env))]
-      ; [recC (name rhs body)
-      ;       (local [(define b (box (numV 12)))
-      ;               (define new-env (add-to-env (list name) (list b) env))
-      ;               (define rhsval (interp rhs new-env))]
-      ;         (begin (set-box! b rhsval)
-      ;                (interp body new-env)))]
+      [recC (name rhs body)
+            (local [(define b (box (numV 12)))
+                    (define new-env (add-to-env (list name) (list b) env))
+                    (define rhsval (unbox (interp rhs new-env)))]
+              (begin (set-box! b rhsval)
+                     (interp body new-env)))]
       [appC (fn args) 
         (type-case Value (unbox (interp fn env))
           [cloV (params body env)
@@ -198,8 +198,7 @@
                     (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
               (interp body new-env))]
-          [else (error 'interp "expected function")])]
-        [else (error 'interp "not implemented")]))
+          [else (error 'interp "expected function")])]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -247,7 +246,7 @@
       [(s-exp-match? `false s) (boolC #f)]
       [(s-exp-match? `SYMBOL s) 
         (cond [(is-id-legal? (s-exp->symbol s)) (idC (s-exp->symbol s))]
-              [else (error 'parse "not a valid symbol")])]
+              [else (error (s-exp->symbol s) "not a valid symbol")])]
       [(s-exp-match? `STRING s) (stringC (s-exp->string s))]
       [(s-exp-match? `{if ANY ANY ANY} s) 
         (local [(define a-list (s-exp->list s))]
@@ -274,12 +273,12 @@
           (cond 
             [(is-symbol-unique? params) (lamC params (parse (third a-list)))]
             [else (error 'parse "params not unique")]))]
-      [(s-exp-match? '{rec {SYMBOL = OWQQ5} OWQQ5} s)
+      [(s-exp-match? '{rec {SYMBOL = ANY} ANY} s)
         (local [(define a-list (s-exp->list s))
-                (define fundef-list (s-exp->list (second a-list)))]
-          (recC (s-exp->symbol (first fundef-list))
-                (parse (third fundef-list))
-                (parse (third a-list))))]
+                (define fundef-list (s-exp->list (second a-list)))
+                (define fun-id (s-exp->symbol (first fundef-list)))
+                (define fun-body (third fundef-list))]
+          (recC fun-id (parse fun-body) (parse (third a-list))))]
       [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-elem (first a-list))]
@@ -438,6 +437,10 @@
 (test (parse '{{func {z y} {+ z y}} {+ 9 14} 98})
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
+(test (parse '{rec {f = {func {x} {f {- x 1}}}} {f 6}})
+      (recC 'f 
+            (parse '{func {x} {f {- x 1}}})
+            (parse '{f 6})))
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
 (test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
@@ -450,5 +453,6 @@
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
 (test/exn (parse '{+ + +}) "not a valid symbol")
+
 
 
