@@ -19,6 +19,9 @@
   [binopC (op : symbol) ; operator
           (l : OWQQ5) 
           (r : OWQQ5)]
+  [recC (name : symbol)
+        (def : OWQQ5)
+        (call : OWQQ5)]
   [appC (fn : OWQQ5) 
         (args : (listof OWQQ5))])
 
@@ -180,6 +183,12 @@
                        [boolV (b) (if b then els)]
                        [else (error 'interp "expected boolean")]))] 
       [lamC (params body) (cloV params body env)]
+      ; [recC (name rhs body)
+      ;       (local [(define b (box (numV 12)))
+      ;               (define new-env (cons (bind name b) env))
+      ;               (define rhsval (interp rhs new-env))]
+      ;         (begin (set-box! b rhsval)
+      ;                (interp body new-env)))]))
       [appC (fn args) 
         (type-case Value (interp fn env)
           [cloV (params body env)
@@ -187,7 +196,8 @@
                     (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
               (interp body new-env))]
-          [else (error 'interp "expected function")])]))
+          [else (error 'interp "expected function")])]
+      [else (error 'interp "not implemented")]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -262,6 +272,12 @@
           (cond 
             [(is-symbol-unique? params) (lamC params (parse (third a-list)))]
             [else (error 'parse "params not unique")]))]
+      [(s-exp-match? '{rec {SYMBOL = OWQQ5} OWQQ5} s)
+        (local [(define a-list (s-exp->list s))
+                (define fundef-list (s-exp->list (second a-list)))]
+          (recC (s-exp->symbol (first fundef-list))
+                (parse (third fundef-list))
+                (parse (third a-list))))]
       [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-elem (first a-list))]
