@@ -140,8 +140,11 @@
 ; given an expression
 ; returns a string after parsing and interpreting expression
 ; taken from Assignment 5 by John Clements
-(define (top-eval [s : s-expression]) : string
-  (serialize (interp (parse s) empty-env)))
+(define (top-eval [program : s-expression]) : string
+  (serialize (interp (parse-prog program) empty-env)))
+
+(define (parse-prog [program : s-expression]) : OWQQ5
+  (parse program))
 
 ; given a value and returns a string
 ; taken from Assignment 3 by John Clements
@@ -175,7 +178,7 @@
               (unbox (interp r env))))]
       [idC (id) 
         (type-case (optionof (boxof Value)) (hash-ref env id)
-          [none () (error 'interp "unbound identifier")]
+          [none () (error id "unbound identifier")]
           [some (val) val])]
       [stringC (str) (box (stringV str))]
       [ifC (c t f) (local [(define condition (unbox (interp c env)))
@@ -354,6 +357,14 @@
       "121")
 ; (parse '{{+ 1 2}})
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Parse-Prog Test Cases
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(test (parse-prog '{+ 12 4})
+      (parse '{+ 12 4}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -426,8 +437,10 @@
                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
               empty-env)
       (box (numV 121)))
+; need fixing
 (test (interp (appC (numC 3) empty) empty-env)
       (box (numV 3)))
+; (top-eval ('((func () 9)))) evaluated to "9", expecting "#<procedure>"
 (test/exn (interp (appC (boolC #t) empty) empty-env)
           "expected function")
 
