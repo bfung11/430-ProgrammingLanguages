@@ -198,6 +198,7 @@
                     (define arg-vals (map interp-again args))
                     (define new-env (add-to-env params arg-vals env))]
               (interp body new-env))]
+          [numV (n) (box (numV n))]
           [else (error 'interp "expected function")])]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -425,12 +426,17 @@
                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
               empty-env)
       (box (numV 121)))
-(test/exn (interp (appC (numC 3) empty) empty-env)
+(test (interp (appC (numC 3) empty) empty-env)
+      (box (numV 3)))
+(test/exn (interp (appC (boolC #t) empty) empty-env)
           "expected function")
 
 ; (parse '{func {x} {f {- x 1}}})
 ; (parse '{rec {f = {func {x} {f {- x 1}}}} {f 6}})
 ; (interp (parse '{func {x} {f {- x 1}}}) empty-env)
+
+; (parse '{{+ 1 2}})
+; (interp (parse '{{+ 1 2}}) empty-env)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;
