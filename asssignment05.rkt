@@ -279,6 +279,8 @@
                 (define fun-id (s-exp->symbol (first fundef-list)))
                 (define fun-body (third fundef-list))]
           (recC fun-id (parse fun-body) (parse (third a-list))))]
+      [(s-exp-match? '{new SYMBOL ANY ...} s)
+        (parse (list->s-exp (rest (s-exp->list s))))]
       [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-elem (first a-list))]
@@ -340,6 +342,8 @@
                        {y = 98}
                        {+ z y}})
       "121")
+; (parse '{{+ 1 2}})
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -449,6 +453,8 @@
       (recC 'f 
             (parse '{func {x} {f {- x 1}}})
             (parse '{f 6})))
+(test (parse '{new Point 79 2})
+      (parse '{Point 79 2}))
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
 (test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
