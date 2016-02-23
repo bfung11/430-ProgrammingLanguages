@@ -281,6 +281,15 @@
           (recC fun-id (parse fun-body) (parse (third a-list))))]
       [(s-exp-match? '{new SYMBOL ANY ...} s)
         (parse (list->s-exp (rest (s-exp->list s))))]
+      [(s-exp-match? '{send ANY SYMBOL ANY ...} s)
+        (local [(define l (s-exp->list s))
+                (define def (second l))
+                (define sym (string->s-exp 
+                            (symbol->string 
+                            (s-exp->symbol (third l)))))
+                (define rest-list (rest (rest (rest l))))]
+          (parse `{with {obj =,def}
+                        {{obj ,sym} obj ,@rest-list}}))]
       [(s-exp-match? '{ANY ANY ...} s)
          (local [(define a-list (s-exp->list s))
                  (define first-elem (first a-list))]
@@ -455,6 +464,11 @@
             (parse '{f 6})))
 (test (parse '{new Point 79 2})
       (parse '{Point 79 2}))
+
+(test (parse '{send p1 add-x 999})
+      (parse '{with {obj = p1} {{obj "add-x"} obj 999}}))
+
+
 (test (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
 (test (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (test (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
