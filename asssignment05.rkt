@@ -406,12 +406,18 @@
           "expected boolean")
 (test (interp (lamC (list 'x 'y) (numC 3)) empty-env)
       (box (cloV (list 'x 'y) (numC 3) (hash empty))))
+(test (interp (parse '{rec {f = {func {x} {f {- x 1}}}} {f 6}}) empty-env)
+      (interp (parse '{rec {f = {func {x} {f {- x 1}}}} {f 6}}) empty-env))
 (test (interp (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
                     (list (binopC '+ (numC 9) (numC 14)) (numC 98))) 
               empty-env)
       (box (numV 121)))
 (test/exn (interp (appC (numC 3) empty) empty-env)
           "expected function")
+
+; (parse '{func {x} {f {- x 1}}})
+; (parse '{rec {f = {func {x} {f {- x 1}}}} {f 6}})
+; (interp (parse '{func {x} {f {- x 1}}}) empty-env)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -434,6 +440,8 @@
       (lamC (list 'x 'y) (binopC '+ (idC 'x) (idC 'y))))
 (test (parse '{func {z y} {+ z y}})
       (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y))))
+(test/exn (parse '{func {x x} {+ 1 1}})
+          "params not unique")
 (test (parse '{{func {z y} {+ z y}} {+ 9 14} 98})
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
@@ -452,7 +460,8 @@
                     {+ z y}})
       (appC (lamC (list 'z 'y) (binopC '+ (idC 'z) (idC 'y)))
             (list (binopC '+ (numC 9) (numC 14)) (numC 98))))
+(test/exn (parse '{with {y = {+ 9 14}}
+                        {y = 98}
+                        {+ 1 1}})
+          "symbols not unique")
 (test/exn (parse '{+ + +}) "not a valid symbol")
-
-
-
